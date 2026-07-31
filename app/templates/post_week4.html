@@ -14,8 +14,9 @@
 </header>
 
 <form method="post" action="/survey/post-week4?batch={{ batch }}"
-      data-stepper data-stage="post_week4" data-batch="{{ batch }}" novalidate>
+      data-stepper data-stage="post_week4" data-batch="{{ batch }}"{% if autofill %} data-autofill="1"{% endif %} novalidate>
 
+  <input type="hidden" name="fill_seconds" value="">
   {{ identity_step("post_week4", batch, TOTAL, 7, prefill_email, prefill_name) }}
 
   {% call step("Section A", 2, TOTAL, "coral", "Your search since the workshop",
@@ -71,4 +72,4 @@
 </form>
 {% endblock %}
 
-{% block scripts %}<script src="/static/js/stepper.js?v=3"></script>{% endblock %}
+{% block scripts %}<script src="/static/js/stepper.js?v=4"></script>{% endblock %}

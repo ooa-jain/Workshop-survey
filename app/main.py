@@ -148,6 +148,26 @@ def prep_scenarios(scenarios):
     return prepared
 
 
+def fill_seconds(doc):
+    """How long the student took to fill a survey, in seconds, or None if the
+    submission predates time-tracking. Captured client-side and carried in
+    raw_answers as 'fill_seconds'."""
+    try:
+        v = (doc.get("raw_answers") or {}).get("fill_seconds")
+        return int(v) if v not in (None, "", []) else None
+    except (ValueError, TypeError):
+        return None
+
+
+def fmt_duration(seconds):
+    """Seconds -> a compact 'Xm YYs' / 'Ys' label, or an em dash when unknown."""
+    if seconds is None:
+        return "—"
+    seconds = int(round(seconds))
+    m, s = divmod(seconds, 60)
+    return f"{m}m {s:02d}s" if m else f"{s}s"
+
+
 @app.on_event("startup")
 def _startup():
     db.ensure_indexes()
@@ -332,6 +352,7 @@ def pre_form(request: Request):
         prefill_email=(request.query_params.get("email") or "").strip(),
         prefill_name="",
         b_scenarios=b_scenarios,
+        autofill=db.get_dev_mode(),
     ))
 
 
@@ -430,6 +451,7 @@ def sameday_form(request: Request):
     return templates.TemplateResponse(request, "post_sameday.html", base_ctx(
         request, batch, prefill_email=email, prefill_name="",
         b_scenarios=b_scenarios,
+        autofill=db.get_dev_mode(),
     ))
 
 
@@ -440,22 +462,14 @@ async def sameday_submit(request: Request):
 
     name = require(form, "name", "Name")
     email = require(form, "email", "Email")
-    password = require(form, "password", "Password")
 
     blocked = gate_or_none("post_sameday", email, batch)
     if blocked:
         return locked_page(request, "post_sameday", blocked[0], batch, email)
 
+    # The same-day survey no longer asks for a password -- it's a low-stakes
+    # check-in and the email alone matches it to the Pre response.
     pre_doc = db.get_response(email, "pre", batch)
-    if pre_doc and pre_doc.get("password_hash"):
-        from . import auth
-        if not auth.verify_password(password, pre_doc["password_hash"], pre_doc["password_salt"]):
-            b_scenarios = prep_scenarios(SCENARIOS_SAMEDAY)
-            return templates.TemplateResponse(request, "post_sameday.html", base_ctx(
-                request, batch, prefill_email=email, prefill_name=name,
-                error_msg="Incorrect password.",
-                b_scenarios=b_scenarios,
-            ))
 
     b_answers = [require(form, f"b{i}", f"Scenario B{i}") for i in range(1, 6)]
     ji = scoring.score_job_intelligence(b_answers)
@@ -556,6 +570,7 @@ def week4_form(request: Request):
     return templates.TemplateResponse(request, "post_week4.html", base_ctx(
         request, batch, prefill_email=email, prefill_name=prefill_name,
         b_scenarios=b_scenarios,
+        autofill=db.get_dev_mode(),
     ))
 
 
@@ -824,6 +839,9 @@ def admin_student(request: Request, username: str = Depends(check_admin)):
                 "control_shift": control_shift,
                 "dim_svg_rows": dim_svg_rows,
                 "quad_svg": quad_svg,
+                "pre_time": fmt_duration(fill_seconds(pre)) if pre else None,
+                "sameday_time": fmt_duration(fill_seconds(sameday)) if sameday else None,
+                "week4_time": fmt_duration(fill_seconds(week4)) if week4 else None,
             }
 
     return templates.TemplateResponse(request, "admin_student.html", base_ctx(
@@ -834,6 +852,81 @@ def admin_student(request: Request, username: str = Depends(check_admin)):
         n_due=n_due,
     ))
 
+
+# ---------------------------------------------------------------------------
+# ADMIN -- GROUPS (by fill date) + time-to-fill
+# ---------------------------------------------------------------------------
+
+STAGE_LABEL = {"pre": "Pre", "post_sameday": "Same-day", "post_week4": "Week 4"}
+
+
+@app.get("/admin/groups", response_class=HTMLResponse)
+def admin_groups(request: Request, username: str = Depends(check_admin)):
+    """Every submission grouped by the calendar day it was filled, with
+    per-day counts, time-to-fill, and a delete-the-whole-day action. Also
+    shows the overall totals across the batch."""
+    from collections import defaultdict
+    batch = batch_from(request)
+    docs = db.all_responses(batch)
+
+    by_day = defaultdict(list)
+    for d in docs:
+        by_day[d["submitted_at"].strftime("%Y-%m-%d")].append(d)
+
+    groups = []
+    for day in sorted(by_day.keys(), reverse=True):
+        gdocs = by_day[day]
+        counts = {"pre": 0, "post_sameday": 0, "post_week4": 0}
+        times, people = [], []
+        for d in gdocs:
+            counts[d["stage"]] = counts.get(d["stage"], 0) + 1
+            fs = fill_seconds(d)
+            if fs is not None:
+                times.append(fs)
+            people.append({
+                "name": d["name"], "email": d["email"],
+                "stage": STAGE_LABEL.get(d["stage"], d["stage"]),
+                "time": fmt_duration(fs),
+                "at": d["submitted_at"].strftime("%H:%M"),
+            })
+        people.sort(key=lambda p: (p["name"].lower(), p["at"]))
+        groups.append({
+            "date": day,
+            "date_label": gdocs[0]["submitted_at"].strftime("%d %b %Y"),
+            "n_students": len({d["email_norm"] for d in gdocs}),
+            "counts": counts,
+            "total": len(gdocs),
+            "avg_time": fmt_duration(sum(times) / len(times)) if times else "—",
+            "people": people,
+        })
+
+    all_times = [t for t in (fill_seconds(d) for d in docs) if t is not None]
+    overall = {
+        "n_students": len({d["email_norm"] for d in docs}),
+        "n_pre": sum(1 for d in docs if d["stage"] == "pre"),
+        "n_sameday": sum(1 for d in docs if d["stage"] == "post_sameday"),
+        "n_week4": sum(1 for d in docs if d["stage"] == "post_week4"),
+        "total": len(docs),
+        "avg_time": fmt_duration(sum(all_times) / len(all_times)) if all_times else "—",
+    }
+
+    dev_mode = db.get_dev_mode()
+    n_due = sum(1 for s in db.cohort_arcs(batch)
+                if eligibility.is_due_for_week4_reminder(s["arc"], dev_mode=dev_mode))
+
+    return templates.TemplateResponse(request, "admin_groups.html", base_ctx(
+        request, batch, groups=groups, overall=overall, n_due=n_due,
+        deleted=request.query_params.get("deleted"),
+    ))
+
+
+@app.post("/admin/groups/delete")
+async def admin_groups_delete(request: Request, username: str = Depends(check_admin)):
+    form = await request.form()
+    batch = form.get("batch", settings.WORKSHOP_BATCH)
+    date = require(form, "date", "Date")
+    deleted = db.delete_responses_on_date(batch, date)
+    return RedirectResponse(f"/admin/groups?batch={batch}&deleted={deleted}", status_code=303)
 
 
 # ---------------------------------------------------------------------------

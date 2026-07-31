@@ -18,6 +18,9 @@
   const stage = form.dataset.stage || "pre";
   const batch = form.dataset.batch || "";
   const storeKey = "jis:" + stage + ":" + batch;
+  const skipPassword = form.dataset.skipPassword === "1";
+  const autofill = form.dataset.autofill === "1";
+  const loadTime = Date.now();
 
   const railFill = document.querySelector(".rail-fill");
   const railCount = document.querySelector(".rail-count");
@@ -26,7 +29,7 @@
 
   let current = 0;
   let gateOk = true;   // flipped false when /api/check says this stage is locked
-  let hasPassword = (stage !== "pre");
+  let hasPassword = (stage !== "pre") && !skipPassword;
   let isResetMode = false;
 
   const forgotLink = form.querySelector("#forgot-password-link");
@@ -68,24 +71,19 @@
     });
   }
 
-  const showPwdToggle = form.querySelector(".show-password-toggle");
-  const showPwdToggleReset = form.querySelector(".show-password-toggle-reset");
-
-  if (showPwdToggle) {
-    showPwdToggle.addEventListener("change", function () {
-      if (pwdInput) {
-        pwdInput.type = this.checked ? "text" : "password";
-      }
+  /* ---- eye toggle: reveal/hide the password field(s) named in data-eye --- */
+  Array.from(form.querySelectorAll(".pwd-eye")).forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      const on = !btn.classList.contains("on");
+      btn.classList.toggle("on", on);
+      btn.setAttribute("aria-pressed", on ? "true" : "false");
+      btn.setAttribute("aria-label", on ? "Hide password" : "Show password");
+      (btn.dataset.eye || "").split(",").forEach(function (sel) {
+        const el = form.querySelector(sel.trim());
+        if (el) el.type = on ? "text" : "password";
+      });
     });
-  }
-
-  if (showPwdToggleReset) {
-    showPwdToggleReset.addEventListener("change", function () {
-      const type = this.checked ? "text" : "password";
-      if (newPwdInput) newPwdInput.type = type;
-      if (confirmPwdInput) confirmPwdInput.type = type;
-    });
-  }
+  });
 
   /* ---- progress rail dots ---------------------------------------------- */
   if (railDots) {
@@ -192,7 +190,7 @@
       .then(function (r) { return r.json(); })
       .then(function (d) {
         gateOk = !!d.ok;
-        hasPassword = !!d.has_password;
+        if (!skipPassword) hasPassword = !!d.has_password;
 
         if (d.state === "done") {
           paintGate("done", "Already submitted",
@@ -284,6 +282,8 @@
     if (e.target.tagName === "TEXTAREA") save();
   });
   form.addEventListener("submit", function () {
+    const fs = form.querySelector('input[name="fill_seconds"]');
+    if (fs) fs.value = Math.round((Date.now() - loadTime) / 1000);
     try { localStorage.removeItem(storeKey); } catch (e) {}
   });
 
@@ -418,7 +418,35 @@
     }
   });
 
+  /* ---- auto-fill (admin "Auto-Fill All Options" / developer mode) --------
+     Fills every answer field so a tester can walk the whole survey without
+     hand-picking each option. The identity step (name/email/password) is
+     left alone so the tester still decides who is submitting. ----------- */
+  function autoFillAnswers() {
+    steps.forEach(function (step, idx) {
+      if (idx === 0) return;   // never touch the identity step
+      const radioGroups = {};
+      Array.from(step.querySelectorAll("input[type=radio]")).forEach(function (r) {
+        (radioGroups[r.name] = radioGroups[r.name] || []).push(r);
+      });
+      Object.keys(radioGroups).forEach(function (name) {
+        const group = radioGroups[name];
+        group[Math.floor(Math.random() * group.length)].checked = true;
+      });
+      const cbSeen = {};
+      Array.from(step.querySelectorAll("input[type=checkbox]")).forEach(function (c) {
+        if (!cbSeen[c.name]) { c.checked = true; cbSeen[c.name] = true; }
+      });
+      Array.from(step.querySelectorAll("textarea")).forEach(function (t) {
+        if (!t.value) t.value = "Auto-filled for testing.";
+      });
+    });
+    paintSelection();
+    save();
+  }
+
   restore();
   paintSelection();
+  if (autofill) autoFillAnswers();
   show(0, true);
 })();

@@ -12,6 +12,7 @@
 <div class="tabs">
   <a href="/admin?batch={{ batch }}">Results</a>
   <a class="on" href="/admin/student?batch={{ batch }}">Individual Analysis</a>
+  <a href="/admin/groups?batch={{ batch }}">Groups</a>
   <a href="/admin/reminders?batch={{ batch }}">Week-4 reminders{% if n_due %}<span class="badge">{{ n_due }} due</span>{% endif %}</a>
   <a href="/admin/export.csv?batch={{ batch }}">Download CSV</a>
 </div>
@@ -54,19 +55,19 @@
       <!-- Timeline stage badges -->
       <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
         {% if student.pre %}
-          <span class="badge" style="background:#8b5cf6; color:#fff;">Pre Submitted: {{ student.pre.submitted_at.strftime('%d %b %Y, %H:%M') }}</span>
+          <span class="badge" style="background:#8b5cf6; color:#fff;">Pre Submitted: {{ student.pre.submitted_at.strftime('%d %b %Y, %H:%M') }} &middot; took {{ student.pre_time }}</span>
         {% else %}
           <span class="badge" style="background:#ef4444; color:#fff;">Pre Pending</span>
         {% endif %}
 
         {% if student.sameday %}
-          <span class="badge" style="background:#f97316; color:#fff;">Same-Day Submitted: {{ student.sameday.submitted_at.strftime('%d %b %Y, %H:%M') }}</span>
+          <span class="badge" style="background:#f97316; color:#fff;">Same-Day Submitted: {{ student.sameday.submitted_at.strftime('%d %b %Y, %H:%M') }} &middot; took {{ student.sameday_time }}</span>
         {% else %}
           <span class="badge" style="background:var(--muted); color:#fff;">Same-Day Missing</span>
         {% endif %}
 
         {% if student.week4 %}
-          <span class="badge" style="background:#06b6d4; color:#fff;">Week-4 Submitted: {{ student.week4.submitted_at.strftime('%d %b %Y, %H:%M') }}</span>
+          <span class="badge" style="background:#06b6d4; color:#fff;">Week-4 Submitted: {{ student.week4.submitted_at.strftime('%d %b %Y, %H:%M') }} &middot; took {{ student.week4_time }}</span>
         {% else %}
           <span class="badge" style="background:var(--muted); color:#fff;">Week-4 Pending</span>
         {% endif %}

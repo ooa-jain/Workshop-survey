@@ -14,9 +14,11 @@
 </header>
 
 <form method="post" action="/survey/post-sameday?batch={{ batch }}"
-      data-stepper data-stage="post_sameday" data-batch="{{ batch }}" novalidate>
+      data-stepper data-stage="post_sameday" data-batch="{{ batch }}"
+      data-skip-password="1"{% if autofill %} data-autofill="1"{% endif %} novalidate>
 
-  {{ identity_step("post_sameday", batch, TOTAL, 6, prefill_email, prefill_name) }}
+  <input type="hidden" name="fill_seconds" value="">
+  {{ identity_step("post_sameday", batch, TOTAL, 6, prefill_email, prefill_name, with_password=False) }}
 
   {% call step("Section B", 2, TOTAL, "coral", "Five scenarios",
                "Different situations, same five ideas as this morning. Pick what you'd actually think now.") %}
@@ -65,4 +67,4 @@
 </form>
 {% endblock %}
 
-{% block scripts %}<script src="/static/js/stepper.js?v=3"></script>{% endblock %}
+{% block scripts %}<script src="/static/js/stepper.js?v=4"></script>{% endblock %}

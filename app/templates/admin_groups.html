@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+{% block title %}Groups by date &middot; {{ app_name }}{% endblock %}
+{% block accent %}coral{% endblock %}
+{% block wrapclass %} wide{% endblock %}
+{% block content %}
+<header class="masthead">
+  <div class="kicker">Admin &middot; {{ batch }}</div>
+  <h1>Groups <em>by date</em></h1>
+  <p class="standfirst">Everyone who filled a survey is grouped by the day they submitted it. Each group shows how many did Pre, Same-day and Week&nbsp;4, how long they took, and can be deleted as a whole.</p>
+</header>
+
+<div class="tabs">
+  <a href="/admin?batch={{ batch }}">Results</a>
+  <a href="/admin/student?batch={{ batch }}">Individual Analysis</a>
+  <a class="on" href="/admin/groups?batch={{ batch }}">Groups</a>
+  <a href="/admin/reminders?batch={{ batch }}">Week-4 reminders{% if n_due %}<span class="badge">{{ n_due }} due</span>{% endif %}</a>
+  <a href="/admin/export.csv?batch={{ batch }}">Download CSV</a>
+</div>
+
+{% if deleted is not none and deleted != '' %}
+  {% if deleted|int > 0 %}<div class="ok-banner">Deleted {{ deleted }} response{{ '' if deleted|int == 1 else 's' }} from that group.</div>
+  {% else %}<div class="error-banner">Nothing was deleted &mdash; that group was already empty.</div>{% endif %}
+{% endif %}
+
+<!-- Overall totals -->
+<div class="hero-stat">
+  <div><div class="lab">Students</div><div class="val">{{ overall.n_students }}</div></div>
+  <div><div class="lab">Pre / Same-day / Week 4</div><div class="val" style="font-size:26px">{{ overall.n_pre }} / {{ overall.n_sameday }} / {{ overall.n_week4 }}</div></div>
+  <div><div class="lab">Total submissions</div><div class="val">{{ overall.total }}</div></div>
+  <div><div class="lab">Avg time to fill</div><div class="val text">{{ overall.avg_time }}</div></div>
+</div>
+
+{% if not groups %}
+<div class="card flat">
+  <div class="tab"><span class="tab-n">!</span>No submissions yet</div>
+  <p class="note" style="margin-bottom:0">Groups appear here as soon as students start submitting surveys.</p>
+</div>
+{% endif %}
+
+{% for g in groups %}
+<div class="card" data-accent="{{ ['violet','coral','aqua','tang'][loop.index0 % 4] }}">
+  <div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:12px;">
+    <div>
+      <div class="tab"><span class="tab-n">{{ "%02d"|format(loop.index) }}</span>{{ g.date_label }}</div>
+      <p class="note" style="margin:0">
+        {{ g.n_students }} student{{ '' if g.n_students == 1 else 's' }} &middot;
+        {{ g.total }} submission{{ '' if g.total == 1 else 's' }} &middot;
+        Pre {{ g.counts.pre }} / Same-day {{ g.counts.post_sameday }} / Week&nbsp;4 {{ g.counts.post_week4 }} &middot;
+        avg {{ g.avg_time }}
+      </p>
+    </div>
+    <form method="post" action="/admin/groups/delete" style="margin:0"
+          onsubmit="return confirm('Delete ALL {{ g.total }} submission(s) from {{ g.date_label }}? This cannot be undone.');">
+      <input type="hidden" name="batch" value="{{ batch }}">
+      <input type="hidden" name="date" value="{{ g.date }}">
+      <button class="btn btn-ghost btn-sm" type="submit" style="border-color:var(--warn); color:var(--warn)">Delete group</button>
+    </form>
+  </div>
+
+  <div class="tbl-scroll" style="margin-top:16px">
+    <table class="tbl">
+      <thead><tr><th>Student</th><th class="num">Survey</th><th class="num">Time</th><th class="num">At</th></tr></thead>
+      <tbody>
+        {% for p in g.people %}
+        <tr>
+          <td class="who">{{ p.name }}<span>{{ p.email }}</span></td>
+          <td class="num">{{ p.stage }}</td>
+          <td class="num">{{ p.time }}</td>
+          <td class="num">{{ p.at }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endfor %}
+{% endblock %}

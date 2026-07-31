@@ -84,9 +84,9 @@ def test_dev_mode_and_individual_grant():
     # 7. Check admin reminders page renders dev mode banner and actions
     r = client.get(f"/admin/reminders?batch={BATCH}", auth=auth)
     assert r.status_code == 200
-    assert "Developer Mode" in r.text
+    assert "Auto-Fill" in r.text
     assert "Grant Access" in r.text
-    print("PASS: Admin reminders page renders Developer Mode controls and Grant Access buttons")
+    print("PASS: Admin reminders page renders Auto-Fill controls and Grant Access buttons")
 
 
 if __name__ == "__main__":
