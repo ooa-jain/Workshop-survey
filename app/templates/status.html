@@ -4,9 +4,9 @@
 {% block wrapclass %} wide{% endblock %}
 {% block content %}
 <header class="masthead">
-  <div class="kicker">Where you are</div>
+  <div class="kicker">Your home &middot; progress &amp; results</div>
   <h1>{% if name %}Hi, <em>{{ name.split(' ')[0] }}</em>{% else %}Your <em>progress</em>{% endif %}</h1>
-  <p class="standfirst">Type the email you used and we'll show which of the three surveys are done, open, or still locked.</p>
+  <p class="standfirst">Everything you've filled in for this workshop in one place &mdash; which surveys are done, your results, and how much you've grown from where you started.</p>
 </header>
 
 <div class="card">
@@ -23,6 +23,71 @@
   {% if not found %}
   <div class="error-banner">No responses found for {{ email }} in this batch. Check for a typo, or start with the Pre survey below.</div>
   {% endif %}
+
+  {% if progress %}
+  <!-- Growth headline -->
+  <div class="hero-stat">
+    <div>
+      <div class="lab">Job Intelligence ({{ progress.latest_label }})</div>
+      <div class="val">{{ progress.ji_latest }}{% if progress.ji_growth is not none and progress.ji_growth != 0 %} <small>({{ '+' if progress.ji_growth > 0 else '' }}{{ progress.ji_growth }})</small>{% endif %}</div>
+    </div>
+    <div>
+      <div class="lab">Growth since Pre (0&ndash;100)</div>
+      <div class="val">
+        {% if progress.ji_growth is not none %}{{ '+' if progress.ji_growth > 0 else '' }}{{ progress.ji_growth }}<small> pts{% if progress.ji_growth_pct is not none and progress.ji_pre %} &middot; {{ '+' if progress.ji_growth_pct >= 0 else '' }}{{ progress.ji_growth_pct }}%{% endif %}</small>
+        {% else %}&mdash;{% endif %}
+      </div>
+    </div>
+    <div>
+      <div class="lab">Job Search (untargeted)</div>
+      <div class="val">{% if progress.js_latest is not none %}{{ progress.js_latest }}{% if progress.js_growth is not none and progress.js_growth != 0 %} <small>({{ '+' if progress.js_growth > 0 else '' }}{{ progress.js_growth }})</small>{% endif %}{% else %}&mdash;{% endif %}</div>
+    </div>
+    <div>
+      <div class="lab">Current quadrant</div>
+      <div class="val text">{{ progress.rows[-1].quadrant or '—' }}</div>
+    </div>
+  </div>
+
+  <!-- What you've submitted, with results -->
+  <div class="card" data-accent="violet">
+    <div class="tab"><span class="tab-n">02</span>What you've submitted</div>
+    <div class="tbl-scroll">
+      <table class="tbl">
+        <thead><tr><th>Survey</th><th class="num">Job Intelligence</th><th class="num">Job Search</th><th class="num">Quadrant</th><th class="num">Filled</th></tr></thead>
+        <tbody>
+          {% for r in progress.rows %}
+          <tr>
+            <td class="who">{{ r.label }}</td>
+            <td class="num">{{ r.ji }}</td>
+            <td class="num">{% if r.js is not none %}{{ r.js }}{% else %}—{% endif %}</td>
+            <td class="num">{{ r.quadrant or '—' }}</td>
+            <td class="num">{{ r.date.strftime('%d %b %Y') }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  {% if progress.quad_svg %}
+  <div class="card" data-accent="coral">
+    <div class="tab"><span class="tab-n">03</span>Your journey</div>
+    <p class="note" style="margin-bottom:16px">Where you started and where you are now on the Job&nbsp;Search &times; Job&nbsp;Intelligence grid.</p>
+    <div class="svgbox">{{ progress.quad_svg | safe }}</div>
+  </div>
+  {% endif %}
+
+  {% if progress.dim_svg_rows %}
+  <div class="card" data-accent="aqua">
+    <div class="tab"><span class="tab-n">04</span>Your mindset, by dimension</div>
+    <p class="note" style="margin-bottom:16px">Each track runs from one mindset to the other. Watch how far you've moved across the workshop.</p>
+    {% for row in progress.dim_svg_rows %}<div class="dim-row">{{ row | safe }}</div>{% endfor %}
+  </div>
+  {% endif %}
+  {% endif %}
+
+  <h2 class="step-h" style="margin-top:38px">Your check-ins</h2>
+  <p class="step-lede">Done, open, or still locked. The locked one emails you the moment it opens.</p>
   <div class="stages">
     {% for s in stages %}{{ stage_card(s, batch, email, loop.index) }}{% endfor %}
   </div>

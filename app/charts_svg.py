@@ -71,18 +71,23 @@ def dimension_arrow_row(desc, left, right, points, width=560, row_h=54):
     svg.append(f'<line x1="{track_x0}" y1="{track_y}" x2="{track_x1}" y2="{track_y}" '
                 f'stroke="{RULE}" stroke-width="3" stroke-linecap="round"/>')
 
+    # Point labels stack downward by order (Pre, then Same day, then Week 4)
+    # so that when two points land on the same spot their labels never
+    # overlap -- each sits on its own line below the track.
+    label_y = [track_y + 20 + 11 * i for i in range(len(points))]
+
     # intermediate point (e.g. same-day), if present
     if len(points) == 3:
         mx = x_of(points[1]["score_0_3"])
         svg.append(f'<circle cx="{mx}" cy="{track_y}" r="4.5" fill="{LIME}" stroke="{INK}" stroke-width="1.5"/>')
-        svg.append(f'<text x="{mx}" y="{track_y+22}" text-anchor="middle" '
+        svg.append(f'<text x="{mx}" y="{label_y[1]}" text-anchor="middle" '
                     f'style="{FONT};font-size:9.5px" fill="{MUTED}">{_esc(points[1]["label"])}</text>')
 
     # start point -- label sits BELOW the track so it never collides with the
     # spectrum end-labels (KNOWLEDGE / JUDGMENT etc.) that sit above it.
     fx = x_of(first["score_0_3"])
     svg.append(f'<circle cx="{fx}" cy="{track_y}" r="6" fill="{INK}"/>')
-    svg.append(f'<text x="{fx}" y="{track_y+20}" text-anchor="middle" '
+    svg.append(f'<text x="{fx}" y="{label_y[0]}" text-anchor="middle" '
                 f'style="{FONT};font-size:9.5px" fill="{MUTED}">{first_label}</text>')
 
     # arrow shaft to end point
@@ -95,7 +100,7 @@ def dimension_arrow_row(desc, left, right, points, width=560, row_h=54):
         svg.append(f'<line x1="{fx}" y1="{track_y}" x2="{lx}" y2="{track_y}" '
                     f'stroke="{arrow_colour}" stroke-width="3.5" marker-end="url(#{marker_id})"/>')
     svg.append(f'<circle cx="{lx}" cy="{track_y}" r="7" fill="{LIME}" stroke="{INK}" stroke-width="2"/>')
-    svg.append(f'<text x="{lx}" y="{track_y+20}" text-anchor="middle" '
+    svg.append(f'<text x="{lx}" y="{label_y[-1]}" text-anchor="middle" '
                 f'style="{FONT};font-size:9.5px;font-weight:600" fill="{TEAL}">{last_label}</text>')
 
     # delta chip, right edge

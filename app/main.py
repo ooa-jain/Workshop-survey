@@ -233,6 +233,77 @@ def next_steps_for(email, batch):
     return eligibility.full_status(db.get_student_arc(email, batch), dev_mode=dev_mode)
 
 
+def build_progress(arc):
+    """Everything a student sees on their home page: each survey they've
+    submitted with its scores, their growth from Pre to their latest survey,
+    and the same trajectory + dimension charts the result pages draw. Returns
+    None until there is at least one submission to show."""
+    pre = arc.get("pre")
+    sameday = arc.get("post_sameday")
+    week4 = arc.get("post_week4")
+    if not (pre or sameday or week4):
+        return None
+
+    def stage_row(label, doc, has_js):
+        s = doc["scores"]
+        return {
+            "label": label,
+            "date": doc["submitted_at"],
+            "ji": s["job_intelligence"]["total"],
+            "js": s.get("job_search", {}).get("total") if has_js else None,
+            "quadrant": s.get("quadrant"),
+        }
+
+    rows = []
+    if pre:
+        rows.append(stage_row("Pre", pre, True))
+    if sameday:
+        rows.append(stage_row("Same day", sameday, False))
+    if week4:
+        rows.append(stage_row("Week 4", week4, True))
+
+    # Growth: Pre -> the most recent survey that carries each score.
+    ji_pre = pre["scores"]["job_intelligence"]["total"] if pre else None
+    latest_ji = (week4 or sameday or pre)["scores"]["job_intelligence"]["total"]
+    ji_growth = round(latest_ji - ji_pre, 1) if ji_pre is not None else None
+    ji_growth_pct = (round((ji_growth / ji_pre) * 100) if (ji_pre and ji_growth is not None) else None)
+
+    js_pre = pre["scores"]["job_search"]["total"] if pre else None
+    latest_js = week4["scores"]["job_search"]["total"] if week4 else js_pre
+    js_growth = round(latest_js - js_pre, 1) if (js_pre is not None and latest_js is not None and week4) else None
+
+    quad_series = []
+    if pre:
+        quad_series.append({"label": "Pre", "job_search": js_pre, "job_intelligence": ji_pre})
+    if sameday:
+        quad_series.append({"label": "Same day", "job_search": None,
+                            "job_intelligence": sameday["scores"]["job_intelligence"]["total"]})
+    if week4:
+        quad_series.append({"label": "Week 4", "job_search": week4["scores"]["job_search"]["total"],
+                            "job_intelligence": week4["scores"]["job_intelligence"]["total"]})
+
+    dim_svg_rows = []
+    if pre and "dimensions" in pre["scores"]["job_intelligence"]:
+        for i, dim in enumerate(pre["scores"]["job_intelligence"]["dimensions"]):
+            pts = [{"label": "Pre", "score_0_3": dim["score_0_3"]}]
+            if sameday:
+                pts.append({"label": "Same day",
+                            "score_0_3": sameday["scores"]["job_intelligence"]["dimensions"][i]["score_0_3"]})
+            if week4:
+                pts.append({"label": "Week 4",
+                            "score_0_3": week4["scores"]["job_intelligence"]["dimensions"][i]["score_0_3"]})
+            dim_svg_rows.append(charts_svg.dimension_arrow_row(dim["desc"], dim["left"], dim["right"], pts))
+
+    return {
+        "rows": rows,
+        "latest_label": rows[-1]["label"],
+        "ji_pre": ji_pre, "ji_latest": latest_ji, "ji_growth": ji_growth, "ji_growth_pct": ji_growth_pct,
+        "js_pre": js_pre, "js_latest": latest_js, "js_growth": js_growth,
+        "quad_svg": charts_svg.quadrant_svg(quad_series) if quad_series else None,
+        "dim_svg_rows": dim_svg_rows,
+    }
+
+
 # ---------------------------------------------------------------------------
 # Landing + student status
 # ---------------------------------------------------------------------------
@@ -265,6 +336,7 @@ def status_page(request: Request):
         request, batch, email=email, name=name,
         stages=eligibility.full_status(arc, dev_mode=dev_mode),
         found=bool(arc),
+        progress=build_progress(arc),
     ))
 
 
