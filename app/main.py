@@ -1,3 +1,4 @@
+import random
 import secrets
 from datetime import datetime, timezone
 
@@ -132,6 +133,19 @@ SCENARIOS_SAMEDAY = [
         ]
     }
 ]
+
+
+def prep_scenarios(scenarios):
+    """Return the scenarios in random order, each with its answer options
+    shuffled too. The option *values* (the a-d letters the scorer keys on)
+    are preserved -- only the on-screen order changes -- so scoring is
+    unaffected while no two students see the same layout."""
+    prepared = []
+    for sc in random.sample(scenarios, len(scenarios)):
+        opts = list(sc["options"])
+        random.shuffle(opts)
+        prepared.append({**sc, "options": opts})
+    return prepared
 
 
 @app.on_event("startup")
@@ -312,8 +326,7 @@ async def api_reset_password(request: Request):
 @app.get("/survey/pre", response_class=HTMLResponse)
 def pre_form(request: Request):
     batch = batch_from(request)
-    import random
-    b_scenarios = random.sample(SCENARIOS_PRE_WEEK4, len(SCENARIOS_PRE_WEEK4))
+    b_scenarios = prep_scenarios(SCENARIOS_PRE_WEEK4)
     return templates.TemplateResponse(request, "pre.html", base_ctx(
         request, batch,
         prefill_email=(request.query_params.get("email") or "").strip(),
@@ -336,8 +349,7 @@ async def pre_submit(request: Request):
     if pre_doc and pre_doc.get("password_hash"):
         from . import auth
         if not auth.verify_password(password, pre_doc["password_hash"], pre_doc["password_salt"]):
-            import random
-            b_scenarios = random.sample(SCENARIOS_PRE_WEEK4, len(SCENARIOS_PRE_WEEK4))
+            b_scenarios = prep_scenarios(SCENARIOS_PRE_WEEK4)
             return templates.TemplateResponse(request, "pre.html", base_ctx(
                 request, batch, prefill_email=email, prefill_name=name,
                 error_msg="Incorrect password. Cannot overwrite pre-survey answers.",
@@ -414,8 +426,7 @@ def sameday_form(request: Request):
         blocked = gate_or_none("post_sameday", email, batch)
         if blocked:
             return locked_page(request, "post_sameday", blocked[0], batch, email)
-    import random
-    b_scenarios = random.sample(SCENARIOS_SAMEDAY, len(SCENARIOS_SAMEDAY))
+    b_scenarios = prep_scenarios(SCENARIOS_SAMEDAY)
     return templates.TemplateResponse(request, "post_sameday.html", base_ctx(
         request, batch, prefill_email=email, prefill_name="",
         b_scenarios=b_scenarios,
@@ -439,8 +450,7 @@ async def sameday_submit(request: Request):
     if pre_doc and pre_doc.get("password_hash"):
         from . import auth
         if not auth.verify_password(password, pre_doc["password_hash"], pre_doc["password_salt"]):
-            import random
-            b_scenarios = random.sample(SCENARIOS_SAMEDAY, len(SCENARIOS_SAMEDAY))
+            b_scenarios = prep_scenarios(SCENARIOS_SAMEDAY)
             return templates.TemplateResponse(request, "post_sameday.html", base_ctx(
                 request, batch, prefill_email=email, prefill_name=name,
                 error_msg="Incorrect password.",
@@ -542,8 +552,7 @@ def week4_form(request: Request):
             if pre:
                 prefill_name = pre["name"]
 
-    import random
-    b_scenarios = random.sample(SCENARIOS_PRE_WEEK4, len(SCENARIOS_PRE_WEEK4))
+    b_scenarios = prep_scenarios(SCENARIOS_PRE_WEEK4)
     return templates.TemplateResponse(request, "post_week4.html", base_ctx(
         request, batch, prefill_email=email, prefill_name=prefill_name,
         b_scenarios=b_scenarios,
@@ -567,8 +576,7 @@ async def week4_submit(request: Request):
     if pre_doc and pre_doc.get("password_hash"):
         from . import auth
         if not auth.verify_password(password, pre_doc["password_hash"], pre_doc["password_salt"]):
-            import random
-            b_scenarios = random.sample(SCENARIOS_PRE_WEEK4, len(SCENARIOS_PRE_WEEK4))
+            b_scenarios = prep_scenarios(SCENARIOS_PRE_WEEK4)
             return templates.TemplateResponse(request, "post_week4.html", base_ctx(
                 request, batch, prefill_email=email, prefill_name=name,
                 error_msg="Incorrect password.",

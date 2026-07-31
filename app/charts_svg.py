@@ -70,10 +70,6 @@ def dimension_arrow_row(desc, left, right, points, width=560, row_h=54):
     # track
     svg.append(f'<line x1="{track_x0}" y1="{track_y}" x2="{track_x1}" y2="{track_y}" '
                 f'stroke="{RULE}" stroke-width="3" stroke-linecap="round"/>')
-    # quartile ticks
-    for frac in (0, 1/3, 2/3, 1):
-        tx = track_x0 + frac * track_w
-        svg.append(f'<line x1="{tx}" y1="{track_y-4}" x2="{tx}" y2="{track_y+4}" stroke="{RULE}" stroke-width="1.5"/>')
 
     # intermediate point (e.g. same-day), if present
     if len(points) == 3:
@@ -133,8 +129,8 @@ def quadrant_svg(series, width=640, height=460):
     parts.append(f'<text x="{x0+pw/2+16}" y="{y0+22}" style="{FONT};font-size:11px;font-weight:600" fill="{INK}">BUSY STRATEGIST</text>')
     parts.append(f'<text x="{x0+16}" y="{y0+ph-10}" style="{FONT};font-size:11px;font-weight:600" fill="{INK}">DRIFTING</text>')
     parts.append(f'<text x="{x0+pw/2+16}" y="{y0+ph-10}" style="{FONT};font-size:11px;font-weight:600" fill="{INK}">VOLUME APPLICANT</text>')
-    parts.append(f'<text x="{x0}" y="{y0+ph+44}" style="{FONT};font-size:10px;letter-spacing:.1em;text-transform:uppercase" fill="{MUTED}">Job Search (untargeted) \u2192</text>')
-    parts.append(f'<text transform="rotate(-90 26 {y0+ph/2})" x="26" y="{y0+ph/2}" style="{FONT};font-size:10px;letter-spacing:.1em;text-transform:uppercase" fill="{MUTED}">Job Intelligence \u2192</text>')
+    parts.append(f'<text x="{x0}" y="{y0+ph+44}" style="{FONT};font-size:10px;letter-spacing:.1em;text-transform:uppercase" fill="{MUTED}">Job Intelligence (untargeted) \u2192</text>')
+    parts.append(f'<text transform="rotate(-90 26 {y0+ph/2})" x="26" y="{y0+ph/2}" style="{FONT};font-size:10px;letter-spacing:.1em;text-transform:uppercase" fill="{MUTED}">Job Search (untargeted) \u2192</text>')
 
     known = [p for p in series if p.get("job_search") is not None]
     marker_id = "ahq"
@@ -197,7 +193,7 @@ def quadrant_field_svg(students, width=640, height=470):
     parts.append(f'<text x="{x0+pw/2+16}" y="{y0+22}" style="{FONT};font-size:11px;font-weight:600" fill="{INK}">BUSY STRATEGIST</text>')
     parts.append(f'<text x="{x0+16}" y="{y0+ph-10}" style="{FONT};font-size:11px;font-weight:600" fill="{INK}">DRIFTING</text>')
     parts.append(f'<text x="{x0+pw/2+16}" y="{y0+ph-10}" style="{FONT};font-size:11px;font-weight:600" fill="{INK}">VOLUME APPLICANT</text>')
-    parts.append(f'<text x="{x0}" y="{y0+ph+44}" style="{FONT};font-size:10px;letter-spacing:.1em;text-transform:uppercase" fill="{MUTED}">Job Search (untargeted) \u2192</text>')
+    parts.append(f'<text x="{x0}" y="{y0+ph+44}" style="{FONT};font-size:10px;letter-spacing:.1em;text-transform:uppercase" fill="{MUTED}">Job Intelligence (untargeted) \u2192</text>')
 
     parts.append(f'''<defs>
         <marker id="ahf" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse">

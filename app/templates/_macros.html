@@ -96,7 +96,7 @@
   <div class="q-text"><span class="q-num">{{ num }}</span>{{ text }}</div>
   <div class="options">
     {% for letter, label in opts_abcd %}
-    <label class="opt"><input type="radio" name="{{ name }}" value="{{ letter }}" required><b>{{ letter }}</b>{{ label }}</label>
+    <label class="opt"><input type="radio" name="{{ name }}" value="{{ letter }}" required>{{ label }}</label>
     {% endfor %}
   </div>
 </div>
@@ -174,7 +174,7 @@
     <a class="btn" href="{{ s.path }}?batch={{ batch }}{% if email %}&amp;email={{ email }}{% endif %}">
       {% if s.stage == 'pre' %}Start{% else %}Open{% endif %} &rarr;</a>
   {% elif s.state == 'done' %}
-    <a class="btn btn-ghost" href="{{ s.path }}?batch={{ batch }}{% if email %}&amp;email={{ email }}{% endif %}">Change my answers</a>
+    <a class="btn btn-ghost" href="{{ s.path }}?batch={{ batch }}{% if email %}&amp;email={{ email }}{% endif %}">View results</a>
   {% else %}
     <button class="btn" type="button" disabled>{{ '~' ~ s.minutes ~ ' min' }}</button>
   {% endif %}

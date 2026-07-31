@@ -355,7 +355,8 @@ textarea{resize:vertical;min-height:78px}
 }
 .svgbox{width:100%;height:auto;overflow-x:auto}
 .svgbox svg{width:100%;height:auto;display:block}
-.dim-row{max-width:100%;height:auto;margin-bottom:8px}
+.dim-row{width:100%;max-width:100%;height:auto;margin-bottom:8px}
+.dim-row svg{width:100%;height:auto;display:block}
 
 .error-banner{
   background:#FCE7E5;border:1.75px solid var(--warn);color:var(--warn);
