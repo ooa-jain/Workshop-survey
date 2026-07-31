@@ -1,0 +1,211 @@
+{% extends "base.html" %}
+{% block title %}Individual Analysis &middot; {{ app_name }}{% endblock %}
+{% block accent %}violet{% endblock %}
+{% block wrapclass %} wide{% endblock %}
+{% block content %}
+<header class="masthead">
+  <div class="kicker">Admin &middot; {{ batch }}</div>
+  <h1>Individual <em>analysis</em></h1>
+  <p class="standfirst">Select any student to inspect their score progression across the three surveys, dimension movement, quadrant trajectory, and qualitative text responses.</p>
+</header>
+
+<div class="tabs">
+  <a href="/admin?batch={{ batch }}">Results</a>
+  <a class="on" href="/admin/student?batch={{ batch }}">Individual Analysis</a>
+  <a href="/admin/reminders?batch={{ batch }}">Week-4 reminders{% if n_due %}<span class="badge">{{ n_due }} due</span>{% endif %}</a>
+  <a href="/admin/export.csv?batch={{ batch }}">Download CSV</a>
+</div>
+
+<!-- Student Selector -->
+<div class="card flat" style="margin-bottom:24px;">
+  <form method="get" action="/admin/student" style="display:flex; gap:12px; align-items:center; flex-wrap:wrap;">
+    <input type="hidden" name="batch" value="{{ batch }}">
+    <label for="email" style="font-weight:700; font-size:14px;">Select Student:</label>
+    <select id="email" name="email" onchange="this.form.submit()" style="flex:1; min-width:280px; padding:10px 14px; font-size:14px; border:1px solid var(--rule,#D8CEBC); border-radius:6px; background:#fff;">
+      {% if not students %}
+        <option value="">No students in cohort yet</option>
+      {% else %}
+        {% for s in students %}
+          <option value="{{ s.email }}" {% if selected_email == s.email %}selected{% endif %}>
+            {{ s.name }} ({{ s.email }}) &mdash; 
+            {% if s.has_week4 %}Pre + Same-Day + Week 4{% elif s.has_sameday %}Pre + Same-Day{% else %}Pre only{% endif %}
+          </option>
+        {% endfor %}
+      {% endif %}
+    </select>
+    <button class="btn btn-ghost btn-sm" type="submit">View Student</button>
+  </form>
+</div>
+
+{% if not student %}
+  <div class="card flat">
+    <div class="tab"><span class="tab-n">!</span>No student selected</div>
+    <p class="note" style="margin-bottom:0">Select a student from the dropdown above to view their individual response analysis.</p>
+  </div>
+{% else %}
+
+<!-- Student Profile Header Card -->
+<div class="card" data-accent="violet" style="margin-bottom:24px;">
+  <div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:16px;">
+    <div>
+      <h2 style="margin:0 0 4px 0; font-size:22px;">{{ student.name }}</h2>
+      <p style="margin:0 0 12px 0; color:var(--muted); font-size:14px;">{{ student.email }} &middot; Batch: {{ batch }}</p>
+      
+      <!-- Timeline stage badges -->
+      <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
+        {% if student.pre %}
+          <span class="badge" style="background:#8b5cf6; color:#fff;">Pre Submitted: {{ student.pre.submitted_at.strftime('%d %b %Y, %H:%M') }}</span>
+        {% else %}
+          <span class="badge" style="background:#ef4444; color:#fff;">Pre Pending</span>
+        {% endif %}
+
+        {% if student.sameday %}
+          <span class="badge" style="background:#f97316; color:#fff;">Same-Day Submitted: {{ student.sameday.submitted_at.strftime('%d %b %Y, %H:%M') }}</span>
+        {% else %}
+          <span class="badge" style="background:var(--muted); color:#fff;">Same-Day Missing</span>
+        {% endif %}
+
+        {% if student.week4 %}
+          <span class="badge" style="background:#06b6d4; color:#fff;">Week-4 Submitted: {{ student.week4.submitted_at.strftime('%d %b %Y, %H:%M') }}</span>
+        {% else %}
+          <span class="badge" style="background:var(--muted); color:#fff;">Week-4 Pending</span>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- Right column actions -->
+    <div style="text-align:right;">
+      <a class="btn btn-ghost btn-sm" href="/admin/reminders?batch={{ batch }}" style="margin-top:4px;">Manage Reminders &rarr;</a>
+    </div>
+  </div>
+</div>
+
+<!-- Hero Stat Breakdown for Student -->
+<div class="hero-stat" style="margin-bottom:24px;">
+  <div>
+    <div class="lab">Job Intelligence Score</div>
+    <div class="val">
+      {{ student.ji_latest }} <span style="font-size:14px; color:var(--muted)">/ 15</span>
+      {% if student.ji_delta is not none %}
+        <span style="font-size:14px; font-weight:700; color:{% if student.ji_delta > 0 %}#10b981{% elif student.ji_delta < 0 %}#ef4444{% else %}var(--muted){% endif %}">
+          ({{ '+' if student.ji_delta > 0 else '' }}{{ student.ji_delta }})
+        </span>
+      {% endif %}
+    </div>
+  </div>
+
+  <div>
+    <div class="lab">Quadrant Trajectory</div>
+    <div class="val" style="font-size:18px;">
+      {% if student.quad_pre and student.quad_latest and student.quad_pre != student.quad_latest %}
+        {{ student.quad_pre }} &rarr; <strong>{{ student.quad_latest }}</strong>
+      {% else %}
+        {{ student.quad_latest or '&mdash;' }}
+      {% endif %}
+    </div>
+  </div>
+
+  <div>
+    <div class="lab">Job Search Volume</div>
+    <div class="val">
+      {% if student.js_latest is not none %}
+        {{ student.js_latest }} <span style="font-size:14px; color:var(--muted)">/ 15</span>
+        {% if student.js_delta is not none %}
+          <span style="font-size:14px; font-weight:700; color:{% if student.js_delta < 0 %}#10b981{% elif student.js_delta > 0 %}#ef4444{% else %}var(--muted){% endif %}">
+            ({{ '+' if student.js_delta > 0 else '' }}{{ student.js_delta }})
+          </span>
+        {% endif %}
+      {% else %}
+        &mdash;
+      {% endif %}
+    </div>
+  </div>
+
+  <div>
+    <div class="lab">Control Check (C1-C3)</div>
+    <div class="val" style="font-size:18px;">
+      {% if student.control_shift is not none %}
+        &Delta; {{ student.control_shift.delta }}
+        <span style="font-size:11px; display:block; color:var(--muted)">
+          {% if student.control_shift.delta < 0.3 %}Credible shift{% else %}Attention required{% endif %}
+        </span>
+      {% else %}
+        &mdash;
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+<!-- Dimension Shift Arrows Card -->
+<div class="card" data-accent="aqua" style="margin-bottom:24px;">
+  <div class="tab"><span class="tab-n">01</span>Dimension score progression (0&ndash;3 scale)</div>
+  <p class="note" style="margin-bottom:16px">Track how {{ student.name }} moved across the 5 core Job Intelligence dimensions across completed surveys.</p>
+  {% for svg_row in student.dim_svg_rows %}
+    <div class="svgbox" style="margin-bottom:12px;">{{ svg_row | safe }}</div>
+  {% endfor %}
+</div>
+
+<!-- Quadrant Position Chart Card -->
+{% if student.quad_svg %}
+<div class="card" data-accent="violet" style="margin-bottom:24px;">
+  <div class="tab"><span class="tab-n">02</span>Quadrant position trajectory</div>
+  <p class="note" style="margin-bottom:16px">Visualizing position on the Job Search (volume) vs Job Intelligence (leverage) grid.</p>
+  <div class="svgbox">{{ student.quad_svg | safe }}</div>
+</div>
+{% endif %}
+
+<!-- Qualitative Responses Breakdown Card -->
+<div class="card" data-accent="tang" style="margin-bottom:24px;">
+  <div class="tab"><span class="tab-n">03</span>Qualitative text responses & feedback</div>
+  
+  {% if student.pre %}
+    <div style="margin-bottom:20px; padding-bottom:16px; border-bottom:1px solid var(--rule,#D8CEBC);">
+      <h4 style="margin:0 0 8px 0; color:#8b5cf6;">Pre Survey Responses</h4>
+      <p style="margin:0 0 6px 0; font-size:13px;"><strong>Target graduation timeline (A1):</strong> {{ student.pre.raw_answers.get('a1', '&mdash;') }}</p>
+      <p style="margin:0 0 6px 0; font-size:13px;"><strong>Applications per week (A2):</strong> {{ student.pre.raw_answers.get('a2', '&mdash;') }}</p>
+      <p style="margin:0 0 6px 0; font-size:13px;"><strong>Main job search bottleneck / challenge (D1):</strong></p>
+      <blockquote style="margin:4px 0 0 0; padding:8px 12px; background:#fff; border-left:3px solid #8b5cf6; font-style:italic; font-size:13px;">
+        {{ student.pre.raw_answers.get('d1') or 'No text written.' }}
+      </blockquote>
+    </div>
+  {% endif %}
+
+  {% if student.sameday %}
+    <div style="margin-bottom:20px; padding-bottom:16px; border-bottom:1px solid var(--rule,#D8CEBC);">
+      <h4 style="margin:0 0 8px 0; color:#f97316;">Same-Day Post Workshop Responses</h4>
+      <p style="margin:0 0 6px 0; font-size:13px;"><strong>Discovered skill/domain overlap (E2):</strong></p>
+      <blockquote style="margin:4px 0 8px 0; padding:8px 12px; background:#fff; border-left:3px solid #f97316; font-style:italic; font-size:13px;">
+        {{ student.sameday.raw_answers.get('e2') or 'No text written.' }}
+      </blockquote>
+      <p style="margin:0 0 6px 0; font-size:13px;"><strong>Primary barrier remaining (F1):</strong></p>
+      <blockquote style="margin:4px 0 8px 0; padding:8px 12px; background:#fff; border-left:3px solid #f97316; font-style:italic; font-size:13px;">
+        {{ student.sameday.raw_answers.get('f1') or 'No text written.' }}
+      </blockquote>
+      <p style="margin:0 0 6px 0; font-size:13px;"><strong>Workshop feedback / takeaways (F3):</strong></p>
+      <blockquote style="margin:4px 0 0 0; padding:8px 12px; background:#fff; border-left:3px solid #f97316; font-style:italic; font-size:13px;">
+        {{ student.sameday.raw_answers.get('f3') or 'No text written.' }}
+      </blockquote>
+    </div>
+  {% endif %}
+
+  {% if student.week4 %}
+    <div style="margin-bottom:0;">
+      <h4 style="margin:0 0 8px 0; color:#06b6d4;">4-Week Post Workshop Responses</h4>
+      <p style="margin:0 0 6px 0; font-size:13px;"><strong>Target role & specific company research (D2):</strong></p>
+      <blockquote style="margin:4px 0 8px 0; padding:8px 12px; background:#fff; border-left:3px solid #06b6d4; font-style:italic; font-size:13px;">
+        {{ student.week4.raw_answers.get('d2') or 'No text written.' }}
+      </blockquote>
+      <p style="margin:0 0 6px 0; font-size:13px;"><strong>Resume & pitch rebuild details (D4):</strong></p>
+      <blockquote style="margin:4px 0 8px 0; padding:8px 12px; background:#fff; border-left:3px solid #06b6d4; font-style:italic; font-size:13px;">
+        {{ student.week4.raw_answers.get('d4') or 'No text written.' }}
+      </blockquote>
+      <p style="margin:0 0 6px 0; font-size:13px;"><strong>Current key obstacle after 4 weeks (E3):</strong></p>
+      <blockquote style="margin:4px 0 0 0; padding:8px 12px; background:#fff; border-left:3px solid #06b6d4; font-style:italic; font-size:13px;">
+        {{ student.week4.raw_answers.get('e3') or 'No text written.' }}
+      </blockquote>
+    </div>
+  {% endif %}
+</div>
+
+{% endif %}
+{% endblock %}

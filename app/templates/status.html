@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% from "_macros.html" import stage_card with context %}
+{% block title %}Your progress &middot; {{ app_name }}{% endblock %}
+{% block wrapclass %} wide{% endblock %}
+{% block content %}
+<header class="masthead">
+  <div class="kicker">Where you are</div>
+  <h1>{% if name %}Hi, <em>{{ name.split(' ')[0] }}</em>{% else %}Your <em>progress</em>{% endif %}</h1>
+  <p class="standfirst">Type the email you used and we'll show which of the three surveys are done, open, or still locked.</p>
+</header>
+
+<div class="card">
+  <div class="tab"><span class="tab-n">01</span>Look me up</div>
+  <form method="get" action="/status">
+    <input type="hidden" name="batch" value="{{ batch }}">
+    <label for="email" class="section-label">Email</label>
+    <input type="email" id="email" name="email" value="{{ email }}" placeholder="you@example.com" required>
+    <div style="margin-top:16px"><button class="btn" type="submit">Show my progress &rarr;</button></div>
+  </form>
+</div>
+
+{% if stages %}
+  {% if not found %}
+  <div class="error-banner">No responses found for {{ email }} in this batch. Check for a typo, or start with the Pre survey below.</div>
+  {% endif %}
+  <div class="stages">
+    {% for s in stages %}{{ stage_card(s, batch, email, loop.index) }}{% endfor %}
+  </div>
+{% endif %}
+{% endblock %}

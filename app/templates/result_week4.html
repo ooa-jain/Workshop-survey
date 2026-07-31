@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% block title %}Your four-week result &middot; {{ app_name }}{% endblock %}
+{% block accent %}aqua{% endblock %}
+{% block wrapclass %} wide{% endblock %}
+{% block content %}
+<header class="masthead">
+  <div class="kicker">Your result &middot; 4 weeks on</div>
+  <h1>The full <em>picture</em></h1>
+  <p class="standfirst">A copy is in your inbox. This is the most complete read on how your search has actually changed.</p>
+</header>
+
+<div class="hero-stat">
+  <div><div class="lab">Job Intelligence</div><div class="val">{{ ji.total }}{% if ji_delta is not none %} <small>({{ '+' if ji_delta > 0 else '' }}{{ ji_delta }})</small>{% endif %}</div></div>
+  <div><div class="lab">Job Search (untargeted)</div><div class="val">{{ js.total }}{% if job_search_delta is not none %} <small>({{ '+' if job_search_delta > 0 else '' }}{{ job_search_delta }})</small>{% endif %}</div></div>
+  <div><div class="lab">Current quadrant</div><div class="val text">{{ quadrant }}</div></div>
+</div>
+
+{% if not matched_pre %}
+<div class="error-banner">We couldn't find your Pre response for this email, so this is today's snapshot only, with no before-and-after comparison.</div>
+{% endif %}
+
+<div class="card" data-accent="aqua">
+  <div class="tab"><span class="tab-n">01</span>Your journey</div>
+  <div class="svgbox">{{ quad_svg | safe }}</div>
+</div>
+
+<div class="card" data-accent="violet">
+  <div class="tab"><span class="tab-n">02</span>Your mindset, by dimension</div>
+  <p class="note" style="margin-bottom:16px">Each track runs from one mindset to the other, across the full arc of the workshop.</p>
+  {% for row in dim_svg_rows %}<div class="dim-row">{{ row | safe }}</div>{% endfor %}
+</div>
+
+{% include "_next.html" %}
+{% endblock %}

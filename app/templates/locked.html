@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block title %}Not open yet &middot; {{ app_name }}{% endblock %}
+{% block accent %}{{ meta.accent }}{% endblock %}
+{% block content %}
+<header class="masthead">
+  <div class="kicker">{{ meta.title }} survey</div>
+  <h1>{% if st.state == 'expired' %}This window has <em>closed</em>{% else %}Not open <em>yet</em>{% endif %}</h1>
+  <p class="standfirst">{{ st.detail }}</p>
+</header>
+
+<div class="card">
+  <div class="tab"><span class="tab-n">!</span>{{ st.headline }}</div>
+  {% if st.unlock_at %}
+  <p class="note">Opens <b>{{ st.unlock_at.strftime('%d %B %Y') }}</b>. You don't need to do anything before then &mdash; the reminder email will carry a direct link.</p>
+  {% endif %}
+  <div style="margin-top:18px;display:flex;gap:12px;flex-wrap:wrap">
+    <a class="btn" href="/status?batch={{ batch }}{% if email %}&amp;email={{ email }}{% endif %}">See where I am &rarr;</a>
+    <a class="btn btn-ghost" href="/?batch={{ batch }}">All three surveys</a>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,153 @@
+{# =========================================================================
+   Shared building blocks.
+
+   `step` is a {% call %} macro: it wraps one section of the survey in the
+   sheet the stepper shows and hides. Each step carries its own ink colour
+   via data-accent, which is what makes the whole page change colour as you
+   move through the form.
+   ========================================================================= #}
+
+{% macro step(tab, n, total, accent, title, lede=None, back=True, next_label="Next section", submit=None) -%}
+<section class="step card" data-accent="{{ accent }}">
+  <div class="tab"><span class="tab-n">{{ "%02d"|format(n) }}/{{ "%02d"|format(total) }}</span>{{ tab }}</div>
+  <h2 class="step-h">{{ title }}</h2>
+  {% if lede %}<p class="step-lede">{{ lede }}</p>{% endif %}
+  {{ caller() }}
+  <div class="step-nav">
+    {% if back %}<button class="btn btn-ghost btn-sm" type="button" data-back>&larr; Back</button>{% endif %}
+    {% if submit %}
+      <button class="btn" type="submit">{{ submit }}</button>
+    {% else %}
+      <button class="btn" type="button" data-next>{{ next_label }} &rarr;</button>
+    {% endif %}
+  </div>
+</section>
+{%- endmacro %}
+
+
+{% macro identity_step(batch, total, minutes, prefill_email="", prefill_name="") -%}
+<section class="step identity-card" data-accent="violet">
+  <div class="tab"><span class="tab-n">01/{{ "%02d"|format(total) }}</span>Who's filling this in</div>
+  <div class="identity-row">
+    <div>
+      <label for="name">Full name</label>
+      <input type="text" id="name" name="name" value="{{ prefill_name }}" autocomplete="name" required>
+    </div>
+    <div>
+      <label for="email">Email</label>
+      <input type="email" id="email" name="email" value="{{ prefill_email }}" autocomplete="email" required>
+    </div>
+  </div>
+  <p class="privacy-note">Use the same email every time &mdash; it's how your three surveys get matched to each other, and where your results are sent. Your individual answers stay with the research team; faculty and the placement cell only ever see anonymised group results.</p>
+  <div class="gate-msg"></div>
+  <input type="hidden" name="batch" value="{{ batch }}">
+  <div class="step-nav">
+    <span class="step-hint">About {{ minutes }} minutes</span>
+    <button class="btn" type="button" data-next>Start &rarr;</button>
+  </div>
+</section>
+{%- endmacro %}
+
+
+{% macro radio(name, num, text, options, hint=None) -%}
+<div class="q">
+  <div class="q-text"><span class="q-num">{{ num }}</span>{{ text }}</div>
+  {% if hint %}<div class="q-hint">{{ hint }}</div>{% endif %}
+  <div class="options">
+    {% for value, label in options %}
+    <label class="opt"><input type="radio" name="{{ name }}" value="{{ value }}" required>{{ label }}</label>
+    {% endfor %}
+  </div>
+</div>
+{%- endmacro %}
+
+
+{% macro scenario(name, num, text, opts_abcd) -%}
+<div class="q">
+  <div class="q-text"><span class="q-num">{{ num }}</span>{{ text }}</div>
+  <div class="options">
+    {% for letter, label in opts_abcd %}
+    <label class="opt"><input type="radio" name="{{ name }}" value="{{ letter }}" required><b>{{ letter }}</b>{{ label }}</label>
+    {% endfor %}
+  </div>
+</div>
+{%- endmacro %}
+
+
+{% macro likert(name, num, text, low_cap='', high_cap='') -%}
+<div class="q">
+  <div class="q-text"><span class="q-num">{{ num }}</span>{{ text }}</div>
+  <div class="likert">
+    {% for v in range(1,6) %}
+    <label><input type="radio" name="{{ name }}" value="{{ v }}" required>{{ v }}</label>
+    {% endfor %}
+  </div>
+  <div class="likert-caps"><span>{{ low_cap }}</span><span>{{ high_cap }}</span></div>
+</div>
+{%- endmacro %}
+
+
+{% macro textq(name, num, text, hint=None, rows=3) -%}
+<div class="q">
+  <div class="q-text"><span class="q-num">{{ num }}</span>{{ text }}</div>
+  {% if hint %}<div class="q-hint">{{ hint }}</div>{% endif %}
+  <textarea name="{{ name }}" rows="{{ rows }}" required></textarea>
+</div>
+{%- endmacro %}
+
+
+{% macro textq_optional(name, num, text, hint=None, rows=2) -%}
+<div class="q">
+  <div class="q-text"><span class="q-num">{{ num }}</span>{{ text }}</div>
+  {% if hint %}<div class="q-hint">{{ hint }}</div>{% endif %}
+  <textarea name="{{ name }}" rows="{{ rows }}"></textarea>
+</div>
+{%- endmacro %}
+
+
+{% macro checkbox_group(name, num, text, options, hint=None) -%}
+<div class="q">
+  <div class="q-text"><span class="q-num">{{ num }}</span>{{ text }}</div>
+  {% if hint %}<div class="q-hint">{{ hint }}</div>{% endif %}
+  <div class="options">
+    {% for value, label in options %}
+    <label class="opt"><input type="checkbox" name="{{ name }}" value="{{ value }}">{{ label }}</label>
+    {% endfor %}
+  </div>
+</div>
+{%- endmacro %}
+
+
+{% macro rail(name, minutes) -%}
+<div class="rail" data-accent="violet">
+  <div class="rail-inner">
+    <span class="rail-name">{{ name }}</span>
+    <span class="rail-track"><span class="rail-fill"></span></span>
+    <span class="rail-dots"></span>
+    <span class="rail-count">Step 1</span>
+  </div>
+</div>
+{%- endmacro %}
+
+
+{# One of the three stage cards, used on the landing page, the status page,
+   and the "what's next" strip under every result. #}
+{% macro stage_card(s, batch, email="", index=1) -%}
+<div class="stage is-{{ s.state }}" data-accent="{{ s.accent }}">
+  <div class="stage-head">
+    <span class="stage-n">{{ "%02d"|format(index) }}</span>
+    <span class="stage-title">{{ s.title }}</span>
+  </div>
+  <div class="stage-sub">{{ s.sub }}</div>
+  <span class="state {{ s.state }}">{{ s.headline }}</span>
+  <p class="stage-detail">{{ s.detail }}</p>
+  {% if s.state == 'open' %}
+    <a class="btn" href="{{ s.path }}?batch={{ batch }}{% if email %}&amp;email={{ email }}{% endif %}">
+      {% if s.stage == 'pre' %}Start{% else %}Open{% endif %} &rarr;</a>
+  {% elif s.state == 'done' %}
+    <a class="btn btn-ghost" href="{{ s.path }}?batch={{ batch }}{% if email %}&amp;email={{ email }}{% endif %}">Change my answers</a>
+  {% else %}
+    <button class="btn" type="button" disabled>{{ '~' ~ s.minutes ~ ' min' }}</button>
+  {% endif %}
+</div>
+{%- endmacro %}

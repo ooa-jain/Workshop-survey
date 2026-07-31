@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block title %}Your same-day result &middot; {{ app_name }}{% endblock %}
+{% block accent %}coral{% endblock %}
+{% block wrapclass %} wide{% endblock %}
+{% block content %}
+<header class="masthead">
+  <div class="kicker">Your result &middot; Same day</div>
+  <h1>How today <em>shifted</em> things</h1>
+  <p class="standfirst">A copy is in your inbox. Your search behaviour hasn't had time to change yet &mdash; that's what the 4-week check-in measures.</p>
+</header>
+
+<div class="hero-stat">
+  <div><div class="lab">Job Intelligence, today</div><div class="val">{{ ji.total }}</div></div>
+  {% if matched_pre %}
+  <div><div class="lab">Change since this morning</div><div class="val">{{ '+' if ji_delta and ji_delta > 0 else '' }}{{ ji_delta }}</div></div>
+  {% else %}
+  <div><div class="lab">Change since this morning</div><div class="val text">No Pre survey on this email</div></div>
+  {% endif %}
+</div>
+
+{% if not matched_pre %}
+<div class="error-banner">We couldn't find a Pre response for this email, so there's no before-and-after here. If you filled Pre with a different address, resubmit this one using that address.</div>
+{% endif %}
+
+{% if quad_svg %}
+<div class="card" data-accent="coral">
+  <div class="tab"><span class="tab-n">01</span>Position</div>
+  <p class="note" style="margin-bottom:16px">The dotted step shows today's shift in Job Intelligence only. Your Job Search position can't move until the 4-week survey.</p>
+  <div class="svgbox">{{ quad_svg | safe }}</div>
+</div>
+{% endif %}
+
+<div class="card" data-accent="aqua">
+  <div class="tab"><span class="tab-n">{{ '02' if quad_svg else '01' }}</span>Your mindset, by dimension</div>
+  {% for row in dim_svg_rows %}<div class="dim-row">{{ row | safe }}</div>{% endfor %}
+</div>
+
+{% include "_next.html" %}
+{% endblock %}

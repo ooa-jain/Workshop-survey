@@ -1,0 +1,22 @@
+[Unit]
+Description=Job Search to Job Intelligence survey app
+After=network.target
+
+[Service]
+Type=simple
+User=www-data
+Group=www-data
+WorkingDirectory=/var/www/job-intelligence-survey
+EnvironmentFile=/var/www/job-intelligence-survey/.env
+ExecStart=/var/www/job-intelligence-survey/venv/bin/gunicorn app.main:app \
+    --workers 3 \
+    --worker-class uvicorn.workers.UvicornWorker \
+    --bind 127.0.0.1:8100 \
+    --timeout 60 \
+    --access-logfile /var/log/job-intelligence-survey/access.log \
+    --error-logfile /var/log/job-intelligence-survey/error.log
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

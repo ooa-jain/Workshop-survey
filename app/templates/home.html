@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% from "_macros.html" import stage_card with context %}
+{% block title %}{{ app_name }}{% endblock %}
+{% block wrapclass %} wide{% endblock %}
+{% block content %}
+<header class="masthead">
+  <div class="kicker">Job Search &rarr; Job Intelligence</div>
+  <h1>Workshop <em>impact</em> survey</h1>
+  <p class="standfirst">Three short check-ins: one before the workshop, one at the end of the day, one a month later. Same email each time &mdash; that's what links them together.</p>
+</header>
+
+<div class="stages">
+  {% for s in stages %}{{ stage_card(s, batch, "", loop.index) }}{% endfor %}
+</div>
+
+<div class="card" style="margin-top:26px">
+  <div class="tab"><span class="tab-n">?</span>How the three connect</div>
+  <p class="note">The Pre survey opens the other two. The same-day one unlocks the moment you submit Pre and closes that night. The 4-week one stays locked for {{ unlock_days }} days, then we email you a link.</p>
+  <p style="margin-bottom:0"><a href="/status?batch={{ batch }}">Check which ones you've already filled in &rarr;</a></p>
+</div>
+{% endblock %}

@@ -1,0 +1,88 @@
+{% extends "base.html" %}
+{% from "_macros.html" import step, identity_step, radio, scenario, likert, textq, rail with context %}
+{% set TOTAL = 5 %}
+
+{% block title %}Pre survey &middot; {{ app_name }}{% endblock %}
+{% block rail %}{{ rail("Survey 1 of 3 — Pre", 7) }}{% endblock %}
+
+{% block content %}
+<header class="masthead">
+  <div class="kicker">Survey 1 of 3 &middot; Pre</div>
+  <h1>Before we <em>start</em></h1>
+  <p class="standfirst">About 7 minutes, in five short sections. Answer honestly &mdash; there's no right answer here, and nothing you write affects your placement.</p>
+</header>
+
+<form method="post" action="/survey/pre?batch={{ batch }}"
+      data-stepper data-stage="pre" data-batch="{{ batch }}" novalidate>
+
+  {{ identity_step(batch, TOTAL, 7, prefill_email, prefill_name) }}
+
+  {% call step("Section A", 2, TOTAL, "coral", "Your job search so far",
+               "Rough numbers are fine. Nobody is checking these against anything.") %}
+    {{ radio("a1", "A1", "Roughly how many job or internship applications have you submitted in the last 30 days?", [
+        ("0","0"), ("1-5","1–5"), ("6-15","6–15"), ("16-30","16–30"), ("more_than_30","More than 30")
+    ]) }}
+    {{ radio("a2", "A2", "Think about your last 10 applications. For how many of them did you change something meaningful in your CV or cover letter — beyond swapping the company name?", [
+        ("0","0"), ("1-2","1–2"), ("3-5","3–5"), ("6-8","6–8"), ("9-10","9–10"), ("not_yet_10","I haven't applied to 10 yet")
+    ]) }}
+    {{ radio("a3", "A3", "For how many roles have you written down the specific tasks that role involves day to day (not the skills listed in the ad — the actual tasks)?", [
+        ("none","None"), ("1","1"), ("2-3","2–3"), ("4-5","4–5"), ("more_than_5","More than 5")
+    ]) }}
+    {{ radio("a4", "A4", "How much time do you typically spend preparing a single application?", [
+        ("under_10","Under 10 minutes"), ("10_30","10–30 minutes"), ("30_60","30–60 minutes"), ("more_than_60","More than an hour")
+    ]) }}
+    {{ likert("a5", "A5", "“I apply to roles I'm not particularly interested in, to improve my overall chances.”",
+              low_cap="Never", high_cap="Very often") }}
+  {% endcall %}
+
+  {% call step("Section B", 3, TOTAL, "aqua", "Five scenarios",
+               "There is no trick here. Pick the option closest to what you'd actually think.") %}
+    {{ scenario("b1", "B1", "A friend tells you they want to become a Business Analyst. What is the most useful first question to ask them?", [
+        ("a","Which companies are hiring Business Analysts right now?"),
+        ("b","What skills do Business Analyst job descriptions list?"),
+        ("c","Which parts of that job are likely to change in the next few years?"),
+        ("d","What specific tasks fill a Business Analyst's week, and which of them create the most value?")
+    ]) }}
+    {{ scenario("b2", "B2", "Two candidates apply for the same analyst role with identical degrees. Who is a hiring manager most likely to pick?", [
+        ("a","The one with the stronger academic record"),
+        ("b","The one who knows more tools and platforms"),
+        ("c","The one who has built more projects"),
+        ("d","The one who can explain why they rejected an approach that looked correct")
+    ]) }}
+    {{ scenario("b3", "B3", "A company automates most of its routine content writing using AI. What new problem is this most likely to create?", [
+        ("a","Nothing much — it will just be cheaper and faster"),
+        ("b","Writers will lose their jobs"),
+        ("c","They'll produce more content than anyone can review or keep consistent"),
+        ("d","Someone must now own accuracy, brand and legal risk for everything AI publishes")
+    ]) }}
+    {{ scenario("b4", "B4", "You want to stand out for roles in the sports industry. Which is the strongest position to build?", [
+        ("a","Learn a bit of everything so you can fit into any role"),
+        ("b","Get the most recognised certification in the field"),
+        ("c","Become excellent at one high-demand skill, like data analysis"),
+        ("d","Combine two or three ordinary skills — sport, data, design — into something few people offer")
+    ]) }}
+    {{ scenario("b5", "B5", "You're preparing for an interview and you use AI to help. Which use gives you the biggest real advantage?", [
+        ("a","Asking it to write your answers so you can memorise them"),
+        ("b","Asking it to list common interview questions"),
+        ("c","Asking it to research the company and summarise it for you"),
+        ("d","Asking it to argue against your answers so you can find the weak points")
+    ]) }}
+  {% endcall %}
+
+  {% call step("Section C", 4, TOTAL, "tang", "A quick sense-check",
+               "These three don't score you on anything. They tell us later whether a change in your answers is real or just agreement drift.") %}
+    {{ likert("c1", "C1", "“Networking and referrals matter in getting a job.”", low_cap="Disagree", high_cap="Agree") }}
+    {{ likert("c2", "C2", "“I prefer working in a team over working alone.”", low_cap="Disagree", high_cap="Agree") }}
+    {{ likert("c3", "C3", "“I prefer detailed instructions over figuring things out myself.”", low_cap="Disagree", high_cap="Agree") }}
+  {% endcall %}
+
+  {% call step("Section D", 5, TOTAL, "violet", "In your own words",
+               "Last one. Two sentences is plenty.", submit="Send my answers") %}
+    {{ textq("d1", "D1", "What do you think is the biggest thing standing between you and the role you want?") }}
+  {% endcall %}
+
+  <p class="autosave">Your answers save on this device as you go</p>
+</form>
+{% endblock %}
+
+{% block scripts %}<script src="/static/js/stepper.js?v=3"></script>{% endblock %}

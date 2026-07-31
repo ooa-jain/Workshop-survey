@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block title %}Your starting point &middot; {{ app_name }}{% endblock %}
+{% block wrapclass %} wide{% endblock %}
+{% block content %}
+<header class="masthead">
+  <div class="kicker">Your result &middot; Pre</div>
+  <h1>Thanks, <em>{{ name.split(' ')[0] }}</em></h1>
+  <p class="standfirst">This is your starting point, before the workshop. A copy is on its way to your inbox &mdash; keep it, because the whole point is watching these numbers move.</p>
+</header>
+
+<div class="hero-stat">
+  <div><div class="lab">Job Intelligence</div><div class="val">{{ ji.total }}</div></div>
+  <div><div class="lab">Job Search (untargeted)</div><div class="val">{{ js.total }}</div></div>
+  <div><div class="lab">Starting quadrant</div><div class="val text">{{ quadrant }}</div></div>
+</div>
+
+<div class="card" data-accent="violet">
+  <div class="tab"><span class="tab-n">01</span>Where you're starting from</div>
+  <div class="svgbox">{{ quad_svg | safe }}</div>
+</div>
+
+<div class="card" data-accent="aqua">
+  <div class="tab"><span class="tab-n">02</span>Your mindset, by dimension</div>
+  <p class="note" style="margin-bottom:16px">Each track runs from one mindset to the other. Today's position is marked; after the workshop you'll see it move.</p>
+  {% for row in dim_svg_rows %}<div class="dim-row">{{ row | safe }}</div>{% endfor %}
+</div>
+
+{% include "_next.html" %}
+{% endblock %}

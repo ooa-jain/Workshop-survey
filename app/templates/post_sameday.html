@@ -1,0 +1,95 @@
+{% extends "base.html" %}
+{% from "_macros.html" import step, identity_step, radio, scenario, likert, textq, textq_optional, checkbox_group, rail with context %}
+{% set TOTAL = 6 %}
+
+{% block title %}Same-day survey &middot; {{ app_name }}{% endblock %}
+{% block accent %}coral{% endblock %}
+{% block rail %}{{ rail("Survey 2 of 3 — Same day", 6) }}{% endblock %}
+
+{% block content %}
+<header class="masthead">
+  <div class="kicker">Survey 2 of 3 &middot; Same day</div>
+  <h1>End of the <em>day</em></h1>
+  <p class="standfirst">About 6 minutes, in six short sections. Use the same email you used this morning so today lines up against your starting point.</p>
+</header>
+
+<form method="post" action="/survey/post-sameday?batch={{ batch }}"
+      data-stepper data-stage="post_sameday" data-batch="{{ batch }}" novalidate>
+
+  {{ identity_step(batch, TOTAL, 6, prefill_email, prefill_name) }}
+
+  {% call step("Section B", 2, TOTAL, "coral", "Five scenarios",
+               "Different situations, same five ideas as this morning. Pick what you'd actually think now.") %}
+    {{ scenario("b1", "B1", "A friend tells you they want to become a Digital Marketer. What is the most useful first question to ask them?", [
+        ("a","Which companies are hiring digital marketers?"),
+        ("b","What tools do digital marketing job ads ask for?"),
+        ("c","Which parts of digital marketing are changing fastest?"),
+        ("d","What does a digital marketer actually do each week, and which of those tasks matter most?")
+    ]) }}
+    {{ scenario("b2", "B2", "Two candidates apply for the same product role with identical qualifications. Who is more valuable to the company?", [
+        ("a","The one who scored higher in their degree"),
+        ("b","The one who has used more product tools"),
+        ("c","The one who has shipped more side projects"),
+        ("d","The one who can explain a decision they made with incomplete information, and why")
+    ]) }}
+    {{ scenario("b3", "B3", "A hospital starts using AI to draft patient discharge summaries. What new problem does this most likely create?", [
+        ("a","None — it saves doctors time"),
+        ("b","Junior doctors will have less to do"),
+        ("c","Summaries get produced faster than staff can cross-check them"),
+        ("d","Someone must be accountable when an AI-drafted summary contains an error")
+    ]) }}
+    {{ scenario("b4", "B4", "You want to stand out in the finance industry. Which is the strongest position to build?", [
+        ("a","Learn a little of everything in finance"),
+        ("b","Clear the most respected finance certification"),
+        ("c","Become excellent at financial modelling"),
+        ("d","Combine finance with something rare next to it — climate policy, or data storytelling")
+    ]) }}
+    {{ scenario("b5", "B5", "You're writing a business proposal and you use AI to help. Which use gives you the biggest real advantage?", [
+        ("a","Have it write the proposal and submit it"),
+        ("b","Have it check grammar and formatting"),
+        ("c","Have it produce a first draft that you then rewrite"),
+        ("d","Have it stress-test your assumptions and tell you where the proposal would fail")
+    ]) }}
+  {% endcall %}
+
+  {% call step("Section C", 3, TOTAL, "aqua", "A quick sense-check",
+               "Same three statements as this morning. Answer them fresh rather than trying to remember what you put.") %}
+    {{ likert("c1", "C1", "“Networking and referrals matter in getting a job.”", low_cap="Disagree", high_cap="Agree") }}
+    {{ likert("c2", "C2", "“I prefer working in a team over working alone.”", low_cap="Disagree", high_cap="Agree") }}
+    {{ likert("c3", "C3", "“I prefer detailed instructions over figuring things out myself.”", low_cap="Disagree", high_cap="Agree") }}
+  {% endcall %}
+
+  {% call step("Section D", 4, TOTAL, "tang", "Looking back at this morning") %}
+    {{ likert("d1", "D1", "Looking back now, how targeted was your job search before today?",
+              low_cap="Completely scattered", high_cap="Highly targeted") }}
+    {{ likert("d2", "D2", "“Before today, I had underestimated how untargeted my approach was.”",
+              low_cap="Disagree", high_cap="Agree") }}
+  {% endcall %}
+
+  {% call step("Section E", 5, TOTAL, "violet", "What you'll do next",
+               "This is the part we check against in four weeks, so pick what you'll really do.") %}
+    {{ checkbox_group("e1", "E1", "In the next two weeks, I intend to:", [
+        ("tasks","Break at least one target role into its constituent tasks in writing"),
+        ("cv","Rewrite my CV around problems I can solve rather than skills I have"),
+        ("focus","Reduce the number of roles I apply to and increase effort per application"),
+        ("combo","Identify a second skill to combine with my main one"),
+        ("nothing","Change nothing for now"),
+    ], hint="Select all that apply.") }}
+    {{ textq("e2", "E2", "Name one specific market gap you identified today that you intend to explore further.") }}
+  {% endcall %}
+
+  {% call step("Section F", 6, TOTAL, "coral", "The workshop itself",
+               "Last section. Be blunt — this is what shapes the next run.", submit="Send my answers") %}
+    {{ textq("f1", "F1", "What is now the biggest thing standing between you and the role you want?") }}
+    {{ radio("f2", "F2", "Which session changed your thinking the most?", [
+        ("job_modularity","Job Modularity"), ("industry_constraints","Industry Constraints"),
+        ("market_gaps","Market Gaps"), ("ai_gap_assessment","AI Gap Assessment"), ("industry_5_0","Industry 5.0")
+    ]) }}
+    {{ textq_optional("f3", "F3", "One thing that should be cut or expanded next time.") }}
+  {% endcall %}
+
+  <p class="autosave">Your answers save on this device as you go</p>
+</form>
+{% endblock %}
+
+{% block scripts %}<script src="/static/js/stepper.js?v=3"></script>{% endblock %}

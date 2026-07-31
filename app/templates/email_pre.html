@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html>
+<body style="margin:0;padding:0;background:#ededec;font-family:Arial,Helvetica,sans-serif;color:#16242c;">
+<div style="max-width:600px;margin:0 auto;padding:28px 20px;">
+  <div style="font-family:'Courier New',monospace;font-size:11px;letter-spacing:2px;text-transform:uppercase;color:#005b4f;font-weight:bold;">
+    {{ app_name }}
+  </div>
+  <h1 style="font-size:26px;margin:8px 0 4px;">Hi {{ name.split(' ')[0] }} — here's your starting point</h1>
+  <p style="color:#5c6b70;font-size:14px;line-height:1.5;">
+    This is where you're beginning, before today's workshop. Keep this email — we'll show you how it moves after the same-day and 4-week check-ins.
+  </p>
+
+  <table style="width:100%;border-collapse:collapse;margin:20px 0;">
+    <tr>
+      <td style="border:1px solid #c9cdc9;padding:14px;">
+        <div style="font-size:10px;letter-spacing:1px;text-transform:uppercase;color:#5c6b70;">Job Intelligence</div>
+        <div style="font-size:22px;font-weight:bold;font-family:'Courier New',monospace;">{{ ji.total }}</div>
+      </td>
+      <td style="border:1px solid #c9cdc9;padding:14px;">
+        <div style="font-size:10px;letter-spacing:1px;text-transform:uppercase;color:#5c6b70;">Job Search (untargeted)</div>
+        <div style="font-size:22px;font-weight:bold;font-family:'Courier New',monospace;">{{ js.total }}</div>
+      </td>
+      <td style="border:1px solid #c9cdc9;padding:14px;">
+        <div style="font-size:10px;letter-spacing:1px;text-transform:uppercase;color:#5c6b70;">Quadrant</div>
+        <div style="font-size:15px;font-weight:bold;">{{ quadrant }}</div>
+      </td>
+    </tr>
+  </table>
+
+  <p style="font-size:13px;font-weight:bold;text-transform:uppercase;letter-spacing:1px;color:#005b4f;margin-bottom:6px;">Where you're starting from</p>
+  <img src="cid:quad_chart" alt="Quadrant position" style="width:100%;max-width:560px;border:1px solid #c9cdc9;">
+
+  <p style="font-size:13px;font-weight:bold;text-transform:uppercase;letter-spacing:1px;color:#005b4f;margin:22px 0 6px;">Your mindset, by dimension</p>
+  <img src="cid:dim_chart" alt="Dimension breakdown" style="width:100%;max-width:560px;border:1px solid #c9cdc9;">
+
+  <p style="color:#5c6b70;font-size:12.5px;margin-top:26px;">You'll get a same-day result after the workshop ends, and a 4-week result after that. This is workshop research — your individual answers are not shared with faculty or the placement cell.</p>
+</div>
+</body>
+</html>

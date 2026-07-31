@@ -1,0 +1,8 @@
+{% from "_macros.html" import stage_card with context %}
+{% if next_steps %}
+<h2 class="step-h" style="margin-top:38px">What's next</h2>
+<p class="step-lede">Your other check-ins for this workshop. Nothing to remember &mdash; the locked one emails you when it opens.</p>
+<div class="stages">
+  {% for s in next_steps %}{{ stage_card(s, batch, email, loop.index) }}{% endfor %}
+</div>
+{% endif %}

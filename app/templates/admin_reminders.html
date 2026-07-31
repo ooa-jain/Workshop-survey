@@ -1,0 +1,161 @@
+{% extends "base.html" %}
+{% block title %}Week-4 reminders &middot; {{ app_name }}{% endblock %}
+{% block accent %}aqua{% endblock %}
+{% block wrapclass %} wide{% endblock %}
+{% block content %}
+<header class="masthead">
+  <div class="kicker">Admin &middot; {{ batch }}</div>
+  <h1>Week-4 <em>reminders</em></h1>
+  <p class="standfirst">Each student's 4-week survey unlocks {{ unlock_days }} days after their own Pre submission and stays open {{ open_days }} days. Admin can also grant individual access or switch on Developer Mode to allow all students to access at once.</p>
+</header>
+
+<div class="tabs">
+  <a href="/admin?batch={{ batch }}">Results</a>
+  <a class="on" href="/admin/reminders?batch={{ batch }}">Week-4 reminders{% if due %}<span class="badge">{{ due|length }} due</span>{% endif %}</a>
+  <a href="/admin/export.csv?batch={{ batch }}">Download CSV</a>
+</div>
+
+{% if sent is not none and sent != '' %}
+  {% if sent|int > 0 %}<div class="ok-banner">Sent {{ sent }} reminder{{ '' if sent|int == 1 else 's' }}.{% if failed|int %} {{ failed }} failed &mdash; check the service log.{% endif %}</div>
+  {% else %}<div class="error-banner">Nothing sent.{% if failed|int %} {{ failed }} failed &mdash; check the service log.{% else %} Nobody matched.{% endif %}</div>{% endif %}
+{% endif %}
+
+{% if not email_live %}
+<div class="error-banner">Mail is switched off on this deployment (EMAIL_ENABLED is false, or SMTP_HOST is empty). Sends will be logged to the service log instead of delivered, and won't be recorded against a student.</div>
+{% endif %}
+
+<div class="card" data-accent="violet" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:16px; margin-bottom:24px;">
+  <div>
+    <h3 style="margin:0 0 4px 0; font-size:16px;">Developer Mode (Access All at Once)</h3>
+    <p class="note" style="margin:0">
+      {% if dev_mode %}
+        <strong style="color:var(--ok,#10b981)">DEVELOPER MODE IS ON:</strong> All students can access the Week-4 survey at the same time, bypassing the countdown.
+      {% else %}
+        <strong>Developer Mode is OFF:</strong> Week-4 unlocks {{ unlock_days }} days after Pre submission, or when Admin grants individual access below.
+      {% endif %}
+    </p>
+  </div>
+  <form method="post" action="/admin/reminders/dev-mode" style="margin:0">
+    <input type="hidden" name="batch" value="{{ batch }}">
+    <input type="hidden" name="enabled" value="{{ 'false' if dev_mode else 'true' }}">
+    <button class="btn {% if dev_mode %}btn-ghost{% endif %}" type="submit">
+      {% if dev_mode %}Turn OFF Developer Mode{% else %}Turn ON Developer Mode{% endif %}
+    </button>
+  </form>
+</div>
+
+<div class="hero-stat">
+  <div><div class="lab">Due / Unlocked</div><div class="val">{{ due|length }}</div></div>
+  <div><div class="lab">Still counting down</div><div class="val">{{ waiting|length }}</div></div>
+  <div><div class="lab">Week 4 completed</div><div class="val">{{ complete|length }}</div></div>
+</div>
+
+<div class="card" data-accent="aqua">
+  <div class="tab"><span class="tab-n">01</span>Due / Unlocked now &mdash; {{ due|length }} student{{ '' if due|length == 1 else 's' }}</div>
+  {% if due %}
+    <p class="note" style="margin-bottom:16px">Unlocked (by date, manual grant, or developer mode). The mail carries a signed link that pre-fills their name and email.</p>
+    <form method="post" action="/admin/reminders/send" style="margin-bottom:20px">
+      <input type="hidden" name="batch" value="{{ batch }}">
+      <button class="btn" type="submit">Send reminder to all {{ due|length }} &rarr;</button>
+    </form>
+    <div class="tbl-scroll">
+    <table class="tbl">
+      <thead><tr><th>Student</th><th class="num">Unlocked</th><th class="num">Access Type</th><th class="num">Reminders</th><th class="num">Actions</th></tr></thead>
+      <tbody>
+        {% for r in due %}
+        <tr>
+          <td class="who">{{ r.name }}<span>{{ r.email }}</span></td>
+          <td class="num">{{ r.unlock_at.strftime('%d %b') if r.unlock_at else 'Now' }}</td>
+          <td class="num">
+            {% if r.manual_access %}
+              <span class="badge" style="background:#0284c7; color:#fff;">Admin Granted</span>
+            {% elif dev_mode %}
+              <span class="badge" style="background:#8b5cf6; color:#fff;">Dev Mode</span>
+            {% else %}
+              <span>Automatic</span>
+            {% endif %}
+          </td>
+          <td class="num">
+            {% if r.reminder_count %}{{ r.reminder_count }}&times;<br><span style="font-size:11px;color:var(--muted)">{{ r.reminder_last.strftime('%d %b') }}</span>{% else %}&mdash;{% endif %}
+          </td>
+          <td class="num" style="display:flex; gap:6px; justify-content:flex-end; align-items:center;">
+            {% if r.manual_access %}
+              <form method="post" action="/admin/reminders/grant-access" style="margin:0">
+                <input type="hidden" name="batch" value="{{ batch }}">
+                <input type="hidden" name="email" value="{{ r.email }}">
+                <input type="hidden" name="enabled" value="false">
+                <button class="btn btn-ghost btn-sm" type="submit" title="Revoke individual access">Revoke Access</button>
+              </form>
+            {% endif %}
+            <form method="post" action="/admin/reminders/send" style="margin:0">
+              <input type="hidden" name="batch" value="{{ batch }}">
+              <input type="hidden" name="email" value="{{ r.email }}">
+              <button class="btn btn-ghost btn-sm" type="submit">Send</button>
+            </form>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    </div>
+  {% else %}
+    <p class="note" style="margin-bottom:0">Nobody is due. Either everyone is still inside their {{ unlock_days }} days, or they've all submitted.</p>
+  {% endif %}
+</div>
+
+<div class="card" data-accent="tang">
+  <div class="tab"><span class="tab-n">02</span>Still counting down</div>
+  {% if waiting %}
+    <p class="note" style="margin-bottom:16px">Sorted by who unlocks first. Admin can grant individual access to any user below to unlock Week-4 early for them.</p>
+    <div class="tbl-scroll">
+    <table class="tbl">
+      <thead><tr><th>Student</th><th class="num">Pre</th><th class="num">Unlocks</th><th class="num">Days left</th><th class="num">Same-day</th><th class="num">Admin Grant</th></tr></thead>
+      <tbody>
+        {% for r in waiting %}
+        <tr>
+          <td class="who">{{ r.name }}<span>{{ r.email }}</span></td>
+          <td class="num">{{ r.pre_at.strftime('%d %b') }}</td>
+          <td class="num">{{ r.unlock_at.strftime('%d %b') }}</td>
+          <td class="num">{{ r.days_left }}</td>
+          <td class="num">{{ 'yes' if r.sameday_done else '&mdash;' | safe }}</td>
+          <td class="num">
+            <form method="post" action="/admin/reminders/grant-access" style="margin:0">
+              <input type="hidden" name="batch" value="{{ batch }}">
+              <input type="hidden" name="email" value="{{ r.email }}">
+              <input type="hidden" name="enabled" value="true">
+              <button class="btn btn-ghost btn-sm" type="submit">Grant Access</button>
+            </form>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    </div>
+  {% else %}
+    <p class="note" style="margin-bottom:0">Nobody is waiting.</p>
+  {% endif %}
+</div>
+
+<div class="card" data-accent="violet">
+  <div class="tab"><span class="tab-n">03</span>Finished all three</div>
+  {% if complete %}
+    <div class="tbl-scroll">
+    <table class="tbl">
+      <thead><tr><th>Student</th><th class="num">Pre</th><th class="num">Same-day</th></tr></thead>
+      <tbody>
+        {% for r in complete %}
+        <tr>
+          <td class="who">{{ r.name }}<span>{{ r.email }}</span></td>
+          <td class="num">{{ r.pre_at.strftime('%d %b') }}</td>
+          <td class="num">{{ 'yes' if r.sameday_done else '&mdash;' | safe }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    </div>
+  {% else %}
+    <p class="note" style="margin-bottom:0">No Week-4 responses yet.</p>
+  {% endif %}
+</div>
+{% endblock %}
+

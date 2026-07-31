@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{% block title %}{{ app_name }}{% endblock %}</title>
+<meta name="robots" content="noindex">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Archivo:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/static/css/style.css?v=3">
+{# The stepper hides all but the active section. Without JS nothing should be
+   hidden, so the hiding rule is scoped to .js and only this line adds it. #}
+<script>document.documentElement.className += " js";</script>
+</head>
+<body data-accent="{% block accent %}violet{% endblock %}">
+
+<div class="ink-field" aria-hidden="true">
+  <span class="b1"></span><span class="b2"></span><span class="b3"></span>
+</div>
+
+{% block rail %}{% endblock %}
+
+<div class="wrap{% block wrapclass %}{% endblock %}" data-accent="{{ self.accent() }}">
+  {% block content %}{% endblock %}
+
+  <footer class="foot">
+    <span>Office of Academics &middot; JAIN (Deemed-to-be University)</span>
+    <span>{{ batch }}</span>
+  </footer>
+</div>
+
+<div class="grain" aria-hidden="true"></div>
+{% block scripts %}{% endblock %}
+</body>
+</html>
