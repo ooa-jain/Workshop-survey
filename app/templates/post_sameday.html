@@ -9,47 +9,20 @@
 {% block content %}
 <header class="masthead">
   <div class="kicker">Survey 2 of 3 &middot; Same day</div>
-  <h1>End of the <em>day</em></h1>
+  <h1>Post-survey 1</h1>
   <p class="standfirst">About 6 minutes, in six short sections. Use the same email you used this morning so today lines up against your starting point.</p>
 </header>
 
 <form method="post" action="/survey/post-sameday?batch={{ batch }}"
       data-stepper data-stage="post_sameday" data-batch="{{ batch }}" novalidate>
 
-  {{ identity_step(batch, TOTAL, 6, prefill_email, prefill_name) }}
+  {{ identity_step("post_sameday", batch, TOTAL, 6, prefill_email, prefill_name) }}
 
   {% call step("Section B", 2, TOTAL, "coral", "Five scenarios",
                "Different situations, same five ideas as this morning. Pick what you'd actually think now.") %}
-    {{ scenario("b1", "B1", "A friend tells you they want to become a Digital Marketer. What is the most useful first question to ask them?", [
-        ("a","Which companies are hiring digital marketers?"),
-        ("b","What tools do digital marketing job ads ask for?"),
-        ("c","Which parts of digital marketing are changing fastest?"),
-        ("d","What does a digital marketer actually do each week, and which of those tasks matter most?")
-    ]) }}
-    {{ scenario("b2", "B2", "Two candidates apply for the same product role with identical qualifications. Who is more valuable to the company?", [
-        ("a","The one who scored higher in their degree"),
-        ("b","The one who has used more product tools"),
-        ("c","The one who has shipped more side projects"),
-        ("d","The one who can explain a decision they made with incomplete information, and why")
-    ]) }}
-    {{ scenario("b3", "B3", "A hospital starts using AI to draft patient discharge summaries. What new problem does this most likely create?", [
-        ("a","None — it saves doctors time"),
-        ("b","Junior doctors will have less to do"),
-        ("c","Summaries get produced faster than staff can cross-check them"),
-        ("d","Someone must be accountable when an AI-drafted summary contains an error")
-    ]) }}
-    {{ scenario("b4", "B4", "You want to stand out in the finance industry. Which is the strongest position to build?", [
-        ("a","Learn a little of everything in finance"),
-        ("b","Clear the most respected finance certification"),
-        ("c","Become excellent at financial modelling"),
-        ("d","Combine finance with something rare next to it — climate policy, or data storytelling")
-    ]) }}
-    {{ scenario("b5", "B5", "You're writing a business proposal and you use AI to help. Which use gives you the biggest real advantage?", [
-        ("a","Have it write the proposal and submit it"),
-        ("b","Have it check grammar and formatting"),
-        ("c","Have it produce a first draft that you then rewrite"),
-        ("d","Have it stress-test your assumptions and tell you where the proposal would fail")
-    ]) }}
+    {% for sc in b_scenarios %}
+      {{ scenario(sc.name, sc.num, sc.text, sc.options) }}
+    {% endfor %}
   {% endcall %}
 
   {% call step("Section C", 3, TOTAL, "aqua", "A quick sense-check",
@@ -81,10 +54,10 @@
   {% call step("Section F", 6, TOTAL, "coral", "The workshop itself",
                "Last section. Be blunt — this is what shapes the next run.", submit="Send my answers") %}
     {{ textq("f1", "F1", "What is now the biggest thing standing between you and the role you want?") }}
-    {{ radio("f2", "F2", "Which session changed your thinking the most?", [
+    {{ checkbox_group("f2", "F2", "Which session changed your thinking the most?", [
         ("job_modularity","Job Modularity"), ("industry_constraints","Industry Constraints"),
         ("market_gaps","Market Gaps"), ("ai_gap_assessment","AI Gap Assessment"), ("industry_5_0","Industry 5.0")
-    ]) }}
+    ], hint="Select all that apply.") }}
     {{ textq_optional("f3", "F3", "One thing that should be cut or expanded next time.") }}
   {% endcall %}
 

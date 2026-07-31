@@ -33,7 +33,7 @@ def ensure_indexes():
     coll.create_index([("batch", ASCENDING), ("stage", ASCENDING)], name="batch_stage")
 
 
-def upsert_response(email, name, stage, batch, raw_answers, scores):
+def upsert_response(email, name, stage, batch, raw_answers, scores, password_hash=None, password_salt=None):
     coll = responses_collection()
     email_norm = email.strip().lower()
     doc = {
@@ -46,12 +46,24 @@ def upsert_response(email, name, stage, batch, raw_answers, scores):
         "scores": scores,
         "submitted_at": datetime.now(timezone.utc),
     }
+    if stage == "pre" and password_hash and password_salt:
+        doc["password_hash"] = password_hash
+        doc["password_salt"] = password_salt
+
     coll.update_one(
         {"email_norm": email_norm, "stage": stage, "batch": batch},
         {"$set": doc},
         upsert=True,
     )
     return doc
+
+
+def update_student_password(email, batch, password_hash, password_salt):
+    coll = responses_collection()
+    coll.update_one(
+        {"email_norm": email.strip().lower(), "stage": "pre", "batch": batch},
+        {"$set": {"password_hash": password_hash, "password_salt": password_salt}}
+    )
 
 
 def get_response(email, stage, batch):

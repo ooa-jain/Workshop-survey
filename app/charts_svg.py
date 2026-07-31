@@ -40,7 +40,7 @@ def dimension_arrow_row(desc, left, right, points, width=560, row_h=54):
     Replaces the earlier stacked-bar version: this reads as movement along
     a spectrum, not as three independent measurements.
     """
-    track_x0, track_x1 = 130, width - 20
+    track_x0, track_x1 = 210, width - 20
     track_w = track_x1 - track_x0
     track_y = 30
 

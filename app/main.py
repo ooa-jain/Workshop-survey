@@ -17,6 +17,123 @@ templates = Jinja2Templates(directory="app/templates")
 security = HTTPBasic()
 
 
+SCENARIOS_PRE_WEEK4 = [
+    {
+        "name": "b1",
+        "num": "B1",
+        "text": "A friend tells you they want to become a Business Analyst. What is the most useful first question to ask them?",
+        "options": [
+            ("a", "Which companies are hiring Business Analysts right now?"),
+            ("b", "What skills do Business Analyst job descriptions list?"),
+            ("c", "Which parts of that job are likely to change in the next few years?"),
+            ("d", "What specific tasks fill a Business Analyst's week, and which of them create the most value?"),
+        ]
+    },
+    {
+        "name": "b2",
+        "num": "B2",
+        "text": "Two candidates apply for the same analyst role with identical degrees. Who is a hiring manager most likely to pick?",
+        "options": [
+            ("a", "The one with the stronger academic record"),
+            ("b", "The one who knows more tools and platforms"),
+            ("c", "The one who has built more projects"),
+            ("d", "The one who can explain why they rejected an approach that looked correct"),
+        ]
+    },
+    {
+        "name": "b3",
+        "num": "B3",
+        "text": "A company automates most of its routine content writing using AI. What new problem is this most likely to create?",
+        "options": [
+            ("a", "Nothing much — it will just be cheaper and faster"),
+            ("b", "Writers will lose their jobs"),
+            ("c", "They'll produce more content than anyone can review or keep consistent"),
+            ("d", "Someone must now own accuracy, brand and legal risk for everything AI publishes"),
+        ]
+    },
+    {
+        "name": "b4",
+        "num": "B4",
+        "text": "You want to stand out for roles in the sports industry. Which is the strongest position to build?",
+        "options": [
+            ("a", "Learn a bit of everything so you can fit into any role"),
+            ("b", "Get the most recognised certification in the field"),
+            ("c", "Become excellent at one high-demand skill, like data analysis"),
+            ("d", "Combine two or three ordinary skills — sport, data, design — into something few people offer"),
+        ]
+    },
+    {
+        "name": "b5",
+        "num": "B5",
+        "text": "You're preparing for an interview and you use AI to help. Which use gives you the biggest real advantage?",
+        "options": [
+            ("a", "Asking it to write your answers so you can memorise them"),
+            ("b", "Asking it to list common interview questions"),
+            ("c", "Asking it to research the company and summarise it for you"),
+            ("d", "Asking it to argue against your assumptions so you can find the weak points"),
+        ]
+    }
+]
+
+SCENARIOS_SAMEDAY = [
+    {
+        "name": "b1",
+        "num": "B1",
+        "text": "A friend tells you they want to become a Digital Marketer. What is the most useful first question to ask them?",
+        "options": [
+            ("a", "Which companies are hiring digital marketers?"),
+            ("b", "What tools do digital marketing job ads ask for?"),
+            ("c", "Which parts of digital marketing are changing fastest?"),
+            ("d", "What does a digital marketer actually do each week, and which of those tasks matter most?"),
+        ]
+    },
+    {
+        "name": "b2",
+        "num": "B2",
+        "text": "Two candidates apply for the same product role with identical qualifications. Who is more valuable to the company?",
+        "options": [
+            ("a", "The one who scored higher in their degree"),
+            ("b", "The one who has used more product tools"),
+            ("c", "The one who has shipped more side projects"),
+            ("d", "The one who can explain a decision they made with incomplete information, and why"),
+        ]
+    },
+    {
+        "name": "b3",
+        "num": "B3",
+        "text": "A hospital starts using AI to draft patient discharge summaries. What new problem does this most likely create?",
+        "options": [
+            ("a", "None — it saves doctors time"),
+            ("b", "Junior doctors will have less to do"),
+            ("c", "Summaries get produced faster than staff can cross-check them"),
+            ("d", "Someone must be accountable when an AI-drafted summary contains an error"),
+        ]
+    },
+    {
+        "name": "b4",
+        "num": "B4",
+        "text": "You want to stand out in the finance industry. Which is the strongest position to build?",
+        "options": [
+            ("a", "Learn a little of everything in finance"),
+            ("b", "Clear the most respected finance certification"),
+            ("c", "Become excellent at financial modelling"),
+            ("d", "Combine finance with something rare next to it — climate policy, or data storytelling"),
+        ]
+    },
+    {
+        "name": "b5",
+        "num": "B5",
+        "text": "You're writing a business proposal and you use AI to help. Which use gives you the biggest real advantage?",
+        "options": [
+            ("a", "Have it write the proposal and submit it"),
+            ("b", "Have it check grammar and formatting"),
+            ("c", "Have it produce a first draft that you then rewrite"),
+            ("d", "Have it stress-test your assumptions and tell you where the proposal would fail"),
+        ]
+    }
+]
+
+
 @app.on_event("startup")
 def _startup():
     db.ensure_indexes()
@@ -131,6 +248,10 @@ def api_check(request: Request):
     dev_mode = db.get_dev_mode()
     st = eligibility.stage_status(stage, arc, dev_mode=dev_mode)
     name = arc["pre"]["name"] if arc.get("pre") else None
+    
+    # Check if student has password
+    has_password = bool(arc.get("pre", {}).get("password_hash"))
+    
     return JSONResponse({
         "ok": st["state"] in ("open", "done"),
         "state": st["state"],
@@ -138,7 +259,49 @@ def api_check(request: Request):
         "detail": st["detail"],
         "name": name,
         "status_url": f"/status?batch={batch}&email={email}",
+        "has_password": has_password,
     })
+
+
+@app.post("/api/verify-password")
+async def api_verify_password(request: Request):
+    data = await request.json()
+    email = data.get("email", "").strip()
+    batch = data.get("batch", "").strip()
+    password = data.get("password", "")
+
+    if not email or not batch or not password:
+        return JSONResponse({"ok": False, "detail": "Missing email, batch, or password"}, status_code=400)
+
+    pre_doc = db.get_response(email, "pre", batch)
+    if not pre_doc or not pre_doc.get("password_hash"):
+        return JSONResponse({"ok": False, "detail": "No password set for this student."}, status_code=404)
+
+    from . import auth
+    if auth.verify_password(password, pre_doc["password_hash"], pre_doc["password_salt"]):
+        return JSONResponse({"ok": True})
+    else:
+        return JSONResponse({"ok": False, "detail": "Incorrect password"})
+
+
+@app.post("/api/reset-password")
+async def api_reset_password(request: Request):
+    data = await request.json()
+    email = data.get("email", "").strip()
+    batch = data.get("batch", "").strip()
+    new_password = data.get("new_password", "")
+
+    if not email or not batch or not new_password:
+        return JSONResponse({"ok": False, "detail": "Missing email, batch, or new password"}, status_code=400)
+
+    pre_doc = db.get_response(email, "pre", batch)
+    if not pre_doc:
+        return JSONResponse({"ok": False, "detail": "No Pre survey found for this email. Please complete the Pre survey first."}, status_code=404)
+
+    from . import auth
+    pwd_hash, pwd_salt = auth.hash_password(new_password)
+    db.update_student_password(email, batch, pwd_hash, pwd_salt)
+    return JSONResponse({"ok": True})
 
 
 
@@ -149,10 +312,13 @@ def api_check(request: Request):
 @app.get("/survey/pre", response_class=HTMLResponse)
 def pre_form(request: Request):
     batch = batch_from(request)
+    import random
+    b_scenarios = random.sample(SCENARIOS_PRE_WEEK4, len(SCENARIOS_PRE_WEEK4))
     return templates.TemplateResponse(request, "pre.html", base_ctx(
         request, batch,
         prefill_email=(request.query_params.get("email") or "").strip(),
         prefill_name="",
+        b_scenarios=b_scenarios,
     ))
 
 
@@ -163,6 +329,25 @@ async def pre_submit(request: Request):
 
     name = require(form, "name", "Name")
     email = require(form, "email", "Email")
+    password = require(form, "password", "Password")
+
+    # Check if they already have a password set (resubmission)
+    pre_doc = db.get_response(email, "pre", batch)
+    if pre_doc and pre_doc.get("password_hash"):
+        from . import auth
+        if not auth.verify_password(password, pre_doc["password_hash"], pre_doc["password_salt"]):
+            import random
+            b_scenarios = random.sample(SCENARIOS_PRE_WEEK4, len(SCENARIOS_PRE_WEEK4))
+            return templates.TemplateResponse(request, "pre.html", base_ctx(
+                request, batch, prefill_email=email, prefill_name=name,
+                error_msg="Incorrect password. Cannot overwrite pre-survey answers.",
+                b_scenarios=b_scenarios,
+            ))
+        pwd_hash = pre_doc["password_hash"]
+        pwd_salt = pre_doc["password_salt"]
+    else:
+        from . import auth
+        pwd_hash, pwd_salt = auth.hash_password(password)
 
     b_answers = [require(form, f"b{i}", f"Scenario B{i}") for i in range(1, 6)]
     ji = scoring.score_job_intelligence(b_answers)
@@ -183,7 +368,7 @@ async def pre_submit(request: Request):
         "control_mean": control,
         "quadrant": quad,
     }
-    db.upsert_response(email, name, "pre", batch, raw, scores)
+    db.upsert_response(email, name, "pre", batch, raw, scores, password_hash=pwd_hash, password_salt=pwd_salt)
 
     _send_pre_email(name, email, ji, js, control, quad)
 
@@ -229,8 +414,11 @@ def sameday_form(request: Request):
         blocked = gate_or_none("post_sameday", email, batch)
         if blocked:
             return locked_page(request, "post_sameday", blocked[0], batch, email)
+    import random
+    b_scenarios = random.sample(SCENARIOS_SAMEDAY, len(SCENARIOS_SAMEDAY))
     return templates.TemplateResponse(request, "post_sameday.html", base_ctx(
         request, batch, prefill_email=email, prefill_name="",
+        b_scenarios=b_scenarios,
     ))
 
 
@@ -241,10 +429,23 @@ async def sameday_submit(request: Request):
 
     name = require(form, "name", "Name")
     email = require(form, "email", "Email")
+    password = require(form, "password", "Password")
 
     blocked = gate_or_none("post_sameday", email, batch)
     if blocked:
         return locked_page(request, "post_sameday", blocked[0], batch, email)
+
+    pre_doc = db.get_response(email, "pre", batch)
+    if pre_doc and pre_doc.get("password_hash"):
+        from . import auth
+        if not auth.verify_password(password, pre_doc["password_hash"], pre_doc["password_salt"]):
+            import random
+            b_scenarios = random.sample(SCENARIOS_SAMEDAY, len(SCENARIOS_SAMEDAY))
+            return templates.TemplateResponse(request, "post_sameday.html", base_ctx(
+                request, batch, prefill_email=email, prefill_name=name,
+                error_msg="Incorrect password.",
+                b_scenarios=b_scenarios,
+            ))
 
     b_answers = [require(form, f"b{i}", f"Scenario B{i}") for i in range(1, 6)]
     ji = scoring.score_job_intelligence(b_answers)
@@ -252,8 +453,15 @@ async def sameday_submit(request: Request):
     c1, c2, c3 = require(form, "c1"), require(form, "c2"), require(form, "c3")
     control = scoring.control_mean(c1, c2, c3)
 
-    raw = {k: v for k, v in form.multi_items()}
-    pre_doc = db.get_response(email, "pre", batch)
+    raw = {}
+    for k, v in form.multi_items():
+        if k in raw:
+            if isinstance(raw[k], list):
+                raw[k].append(v)
+            else:
+                raw[k] = [raw[k], v]
+        else:
+            raw[k] = v
 
     scores = {"job_intelligence": ji, "control_mean": control, "matched_pre": bool(pre_doc)}
     if pre_doc:
@@ -334,8 +542,11 @@ def week4_form(request: Request):
             if pre:
                 prefill_name = pre["name"]
 
+    import random
+    b_scenarios = random.sample(SCENARIOS_PRE_WEEK4, len(SCENARIOS_PRE_WEEK4))
     return templates.TemplateResponse(request, "post_week4.html", base_ctx(
         request, batch, prefill_email=email, prefill_name=prefill_name,
+        b_scenarios=b_scenarios,
     ))
 
 
@@ -346,10 +557,23 @@ async def week4_submit(request: Request):
 
     name = require(form, "name", "Name")
     email = require(form, "email", "Email")
+    password = require(form, "password", "Password")
 
     blocked = gate_or_none("post_week4", email, batch)
     if blocked:
         return locked_page(request, "post_week4", blocked[0], batch, email)
+
+    pre_doc = db.get_response(email, "pre", batch)
+    if pre_doc and pre_doc.get("password_hash"):
+        from . import auth
+        if not auth.verify_password(password, pre_doc["password_hash"], pre_doc["password_salt"]):
+            import random
+            b_scenarios = random.sample(SCENARIOS_PRE_WEEK4, len(SCENARIOS_PRE_WEEK4))
+            return templates.TemplateResponse(request, "post_week4.html", base_ctx(
+                request, batch, prefill_email=email, prefill_name=name,
+                error_msg="Incorrect password.",
+                b_scenarios=b_scenarios,
+            ))
 
     b_answers = [require(form, f"b{i}", f"Scenario B{i}") for i in range(1, 6)]
     ji = scoring.score_job_intelligence(b_answers)
@@ -364,7 +588,6 @@ async def week4_submit(request: Request):
     quad = scoring.quadrant(js["total"], ji["total"])
 
     raw = {k: v for k, v in form.multi_items()}
-    pre_doc = db.get_response(email, "pre", batch)
     sameday_doc = db.get_response(email, "post_sameday", batch)
 
     scores = {

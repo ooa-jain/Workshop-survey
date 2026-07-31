@@ -25,7 +25,7 @@
 {%- endmacro %}
 
 
-{% macro identity_step(batch, total, minutes, prefill_email="", prefill_name="") -%}
+{% macro identity_step(stage, batch, total, minutes, prefill_email="", prefill_name="") -%}
 <section class="step identity-card" data-accent="violet">
   <div class="tab"><span class="tab-n">01/{{ "%02d"|format(total) }}</span>Who's filling this in</div>
   <div class="identity-row">
@@ -37,7 +37,36 @@
       <label for="email">Email</label>
       <input type="email" id="email" name="email" value="{{ prefill_email }}" autocomplete="email" required>
     </div>
+    <div class="normal-password-group" style="flex: 1 1 220px;">
+      <label for="password" id="password-label">{% if stage == 'pre' %}Choose Password{% else %}Password{% endif %}</label>
+      <input type="password" id="password" name="password" required placeholder="{% if stage == 'pre' %}Choose a password{% else %}Enter your password{% endif %}">
+      <div id="forgot-password-wrapper" style="margin-top: 8px; {% if stage == 'pre' %}display: none;{% endif %}">
+        <a href="#" id="forgot-password-link" style="font-size: 13px;">Forgot password?</a>
+      </div>
+      <label class="show-password-label" style="display: flex; align-items: center; gap: 8px; margin-top: 8px; font-family: var(--mono); font-size: 11px; text-transform: uppercase; color: #BEB4D2; cursor: pointer; user-select: none;">
+        <input type="checkbox" class="show-password-toggle" style="width: auto; margin: 0; cursor: pointer;">
+        Show Password
+      </label>
+    </div>
+    <div class="reset-password-group" style="display: none; flex: 1 1 100%; gap: 16px; flex-wrap: wrap; margin-top: 16px;">
+      <div style="flex: 1 1 220px;">
+        <label for="new_password">New Password</label>
+        <input type="password" id="new_password" name="new_password" placeholder="Enter new password">
+      </div>
+      <div style="flex: 1 1 220px;">
+        <label for="confirm_password">Confirm Password</label>
+        <input type="password" id="confirm_password" name="confirm_password" placeholder="Confirm new password">
+      </div>
+      <div style="flex: 1 1 100%; margin-top: 8px;">
+        <a href="#" id="back-to-password-link" style="font-size: 13px; display: block; margin-bottom: 6px;">&larr; Back to login</a>
+        <label class="show-password-label" style="display: flex; align-items: center; gap: 8px; margin-top: 8px; font-family: var(--mono); font-size: 11px; text-transform: uppercase; color: #BEB4D2; cursor: pointer; user-select: none;">
+          <input type="checkbox" class="show-password-toggle-reset" style="width: auto; margin: 0; cursor: pointer;">
+          Show Passwords
+        </label>
+      </div>
+    </div>
   </div>
+
   <p class="privacy-note">Use the same email every time &mdash; it's how your three surveys get matched to each other, and where your results are sent. Your individual answers stay with the research team; faculty and the placement cell only ever see anonymised group results.</p>
   <div class="gate-msg"></div>
   <input type="hidden" name="batch" value="{{ batch }}">

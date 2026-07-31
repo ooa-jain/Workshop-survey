@@ -26,6 +26,66 @@
 
   let current = 0;
   let gateOk = true;   // flipped false when /api/check says this stage is locked
+  let hasPassword = (stage !== "pre");
+  let isResetMode = false;
+
+  const forgotLink = form.querySelector("#forgot-password-link");
+  const backToPwdLink = form.querySelector("#back-to-password-link");
+  const normalPwdGroup = form.querySelector(".normal-password-group");
+  const resetPwdGroup = form.querySelector(".reset-password-group");
+  const pwdInput = form.querySelector("#password");
+  const newPwdInput = form.querySelector("#new_password");
+  const confirmPwdInput = form.querySelector("#confirm_password");
+
+  function resetMode(enabled) {
+    isResetMode = enabled;
+    if (enabled) {
+      if (normalPwdGroup) normalPwdGroup.style.display = "none";
+      if (resetPwdGroup) resetPwdGroup.style.display = "flex";
+      if (pwdInput) pwdInput.removeAttribute("required");
+      if (newPwdInput) newPwdInput.setAttribute("required", "");
+      if (confirmPwdInput) confirmPwdInput.setAttribute("required", "");
+    } else {
+      if (normalPwdGroup) normalPwdGroup.style.display = "block";
+      if (resetPwdGroup) resetPwdGroup.style.display = "none";
+      if (pwdInput) pwdInput.setAttribute("required", "");
+      if (newPwdInput) newPwdInput.removeAttribute("required");
+      if (confirmPwdInput) confirmPwdInput.removeAttribute("required");
+    }
+  }
+
+  if (forgotLink) {
+    forgotLink.addEventListener("click", function (e) {
+      e.preventDefault();
+      resetMode(true);
+    });
+  }
+
+  if (backToPwdLink) {
+    backToPwdLink.addEventListener("click", function (e) {
+      e.preventDefault();
+      resetMode(false);
+    });
+  }
+
+  const showPwdToggle = form.querySelector(".show-password-toggle");
+  const showPwdToggleReset = form.querySelector(".show-password-toggle-reset");
+
+  if (showPwdToggle) {
+    showPwdToggle.addEventListener("change", function () {
+      if (pwdInput) {
+        pwdInput.type = this.checked ? "text" : "password";
+      }
+    });
+  }
+
+  if (showPwdToggleReset) {
+    showPwdToggleReset.addEventListener("change", function () {
+      const type = this.checked ? "text" : "password";
+      if (newPwdInput) newPwdInput.type = type;
+      if (confirmPwdInput) confirmPwdInput.type = type;
+    });
+  }
 
   /* ---- progress rail dots ---------------------------------------------- */
   if (railDots) {
@@ -122,7 +182,7 @@
   }
 
   function checkGate() {
-    if (!emailField || stage === "pre") return;
+    if (!emailField) return;
     const email = emailField.value.trim();
     if (!/^\S+@\S+\.\S+$/.test(email)) return;
 
@@ -132,6 +192,8 @@
       .then(function (r) { return r.json(); })
       .then(function (d) {
         gateOk = !!d.ok;
+        hasPassword = !!d.has_password;
+
         if (d.state === "done") {
           paintGate("done", "Already submitted",
             "You've filled this one in. Carrying on will replace your earlier answers.");
@@ -143,11 +205,23 @@
         }
         const nameField = form.querySelector('input[name="name"]');
         if (d.name && nameField && !nameField.value.trim()) nameField.value = d.name;
+
+        // Toggle password fields based on has_password
+        const pwdLabel = form.querySelector("#password-label");
+        const forgotWrapper = form.querySelector("#forgot-password-wrapper");
+        if (d.has_password) {
+          if (pwdLabel) pwdLabel.textContent = "Password";
+          if (forgotWrapper) forgotWrapper.style.display = "block";
+        } else {
+          if (pwdLabel) pwdLabel.textContent = "Choose Password";
+          if (forgotWrapper) forgotWrapper.style.display = "none";
+          resetMode(false);
+        }
       })
       .catch(function () { gateOk = true; });   // never block on a network blip
   }
 
-  if (emailField && stage !== "pre") {
+  if (emailField) {
     emailField.addEventListener("blur", checkGate);
     if (emailField.value.trim()) checkGate();
   }
@@ -226,6 +300,92 @@
         box.classList.add("show");
         return;
       }
+
+      if (current === 0) {
+        const email = emailField.value.trim();
+        const box = errorBox(steps[0]);
+        box.classList.remove("show");
+
+        if (isResetMode) {
+          const newPwd = newPwdInput.value;
+          const confirmPwd = confirmPwdInput.value;
+          if (newPwd !== confirmPwd) {
+            box.textContent = "Passwords do not match.";
+            box.classList.add("show");
+            return;
+          }
+          if (newPwd.length < 4) {
+            box.textContent = "Password must be at least 4 characters.";
+            box.classList.add("show");
+            return;
+          }
+
+          const btn = steps[0].querySelector("[data-next]");
+          btn.disabled = true;
+          const originalText = btn.textContent;
+          btn.textContent = "Resetting...";
+
+          fetch("/api/reset-password", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ email: email, batch: batch, new_password: newPwd })
+          })
+          .then(function (r) { return r.json(); })
+          .then(function (d) {
+            btn.disabled = false;
+            btn.textContent = originalText;
+            if (d.ok) {
+              if (pwdInput) pwdInput.value = newPwd;
+              isResetMode = false;
+              hasPassword = true;
+              save();
+              show(current + 1);
+            } else {
+              box.textContent = d.detail || "Failed to reset password.";
+              box.classList.add("show");
+            }
+          })
+          .catch(function () {
+            btn.disabled = false;
+            btn.textContent = originalText;
+            box.textContent = "Network error. Please try again.";
+            box.classList.add("show");
+          });
+          return;
+        } else if (hasPassword) {
+          const pwd = pwdInput.value;
+          const btn = steps[0].querySelector("[data-next]");
+          btn.disabled = true;
+          const originalText = btn.textContent;
+          btn.textContent = "Verifying...";
+
+          fetch("/api/verify-password", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ email: email, batch: batch, password: pwd })
+          })
+          .then(function (r) { return r.json(); })
+          .then(function (d) {
+            btn.disabled = false;
+            btn.textContent = originalText;
+            if (d.ok) {
+              save();
+              show(current + 1);
+            } else {
+              box.textContent = d.detail || "Incorrect password.";
+              box.classList.add("show");
+            }
+          })
+          .catch(function () {
+            btn.disabled = false;
+            btn.textContent = originalText;
+            box.textContent = "Network error. Please try again.";
+            box.classList.add("show");
+          });
+          return;
+        }
+      }
+
       save();
       show(current + 1);
     }

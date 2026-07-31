@@ -9,11 +9,14 @@ matters most: week-4 must be refused before day 30 and accepted after it.
 import sys, os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
+os.environ["EMAIL_ENABLED"] = "false"  # don't try to actually send mail
+
 import mongomock
 from app import db as db_module
 db_module._client = mongomock.MongoClient()
 
-os.environ.setdefault("EMAIL_ENABLED", "false")  # don't try to actually send mail
+from app.config import settings
+settings.EMAIL_ENABLED = False
 
 from datetime import datetime, timedelta, timezone
 from fastapi.testclient import TestClient
@@ -53,6 +56,7 @@ check("Pre form skips native validation (hidden steps)", "novalidate" in r.text)
 # ---- PRE ----
 PRE_PAYLOAD = {
     "name": "Test Student", "email": EMAIL, "batch": BATCH,
+    "password": "my-secret-password",
     "a1": "16-30", "a2": "1-2", "a3": "1", "a4": "under_10", "a5": "4",
     "b1": "a", "b2": "a", "b3": "a", "b4": "a", "b5": "a",
     "c1": "4", "c2": "3", "c3": "3",
@@ -61,19 +65,43 @@ PRE_PAYLOAD = {
 r = client.post(f"/survey/pre?batch={BATCH}", data=PRE_PAYLOAD)
 check("POST /survey/pre -> 200", r.status_code == 200)
 check("Pre result names a quadrant", "Volume Applicant" in r.text)
+r_correct_pre = r
 
 doc = db_module.get_response(EMAIL, "pre", BATCH)
 check("Pre doc stored", doc is not None)
 check("Pre job_search scored", doc and doc["scores"]["job_search"]["total"] is not None)
 check("Pre job_intelligence scored", doc and doc["scores"]["job_intelligence"]["total"] is not None)
 
+# Check incorrect password for PRE resubmit
+pre_bad_pwd = PRE_PAYLOAD.copy()
+pre_bad_pwd["password"] = "wrong-password"
+r = client.post(f"/survey/pre?batch={BATCH}", data=pre_bad_pwd)
+check("POST resubmit pre with bad password fails", "Incorrect password." in r.text)
+
 # The whole point of the change: same-day is visible the moment Pre lands.
-check("Pre result offers the same-day survey now", "/survey/post-sameday" in r.text)
-check("Pre result shows week-4 as locked", "Unlocks in" in r.text)
+check("Pre result offers the same-day survey now", "/survey/post-sameday" in r_correct_pre.text)
+check("Pre result shows week-4 as locked", "Unlocks in" in r_correct_pre.text)
 
 # ---- api/check reflects the gate ----
 j = client.get(f"/api/check?stage=post_sameday&batch={BATCH}&email={EMAIL}").json()
 check("api/check: same-day open after Pre", j["ok"] and j["state"] == "open")
+check("api/check: has_password is True", j.get("has_password") is True)
+
+# Verify password API endpoint
+r_verify = client.post("/api/verify-password", json={"email": EMAIL, "batch": BATCH, "password": "my-secret-password"})
+check("api/verify-password correct", r_verify.json().get("ok") is True)
+
+r_verify_bad = client.post("/api/verify-password", json={"email": EMAIL, "batch": BATCH, "password": "wrong-password"})
+check("api/verify-password incorrect", r_verify_bad.json().get("ok") is False)
+
+# Reset password API endpoint
+r_reset = client.post("/api/reset-password", json={"email": EMAIL, "batch": BATCH, "new_password": "new-secret-password"})
+check("api/reset-password status", r_reset.json().get("ok") is True)
+
+# Verify new password
+r_verify_new = client.post("/api/verify-password", json={"email": EMAIL, "batch": BATCH, "password": "new-secret-password"})
+check("api/verify-password new password correct", r_verify_new.json().get("ok") is True)
+
 j = client.get(f"/api/check?stage=post_week4&batch={BATCH}&email={EMAIL}").json()
 check("api/check: week-4 locked before day 30", (not j["ok"]) and j["state"] == "locked")
 j = client.get(f"/api/check?stage=post_sameday&batch={BATCH}&email=nobody@example.com").json()
@@ -82,23 +110,33 @@ check("api/check: same-day locked with no Pre", (not j["ok"]) and j["state"] == 
 # ---- SAME-DAY ----
 SAMEDAY_PAYLOAD = {
     "name": "Test Student", "email": EMAIL, "batch": BATCH,
+    "password": "new-secret-password",
     "b1": "d", "b2": "d", "b3": "c", "b4": "d", "b5": "d",
     "c1": "4", "c2": "3", "c3": "3",
     "d1": "2", "d2": "4",
     "e1": ["tasks", "combo"],
     "e2": "Sports analytics overlap between data and design.",
     "f1": "I don't know how to combine two skills into one pitch.",
-    "f2": "market_gaps", "f3": "More time on the group activity.",
+    "f2": ["market_gaps", "job_modularity"], "f3": "More time on the group activity.",
 }
+
+# Try same-day submission with incorrect password
+bad_sameday_payload = SAMEDAY_PAYLOAD.copy()
+bad_sameday_payload["password"] = "wrong-password"
+r = client.post(f"/survey/post-sameday?batch={BATCH}", data=bad_sameday_payload)
+check("POST same-day with bad password fails", "Incorrect password." in r.text)
+
 r = client.post(f"/survey/post-sameday?batch={BATCH}", data=SAMEDAY_PAYLOAD)
 check("POST same-day -> 200", r.status_code == 200)
 sd = db_module.get_response(EMAIL, "post_sameday", BATCH)
 check("Same-day matched to Pre", sd and sd["scores"]["matched_pre"] is True)
 check("Same-day delta computed", sd and sd["scores"]["ji_delta_vs_pre"] > 0)
+check("Same-day f2 stores multiple options as list", sd and sd["raw_answers"]["f2"] == ["market_gaps", "job_modularity"])
 
 # ---- WEEK 4: blocked before 30 days ----
 WEEK4_PAYLOAD = {
     "name": "Test Student", "email": EMAIL, "batch": BATCH,
+    "password": "new-secret-password",
     "a1": "1-5", "a2": "9-10", "a3": "2-3", "a4": "more_than_60", "a5": "1",
     "b1": "d", "b2": "d", "b3": "d", "b4": "d", "b5": "d",
     "c1": "4", "c2": "3", "c3": "3",
@@ -106,6 +144,7 @@ WEEK4_PAYLOAD = {
     "d3": "significantly", "d4": "Rebuilt it around problems I solve.",
     "e1": "2-3", "e2": "1", "e3": "Getting past the first screening.",
 }
+
 r = client.post(f"/survey/post-week4?batch={BATCH}", data=WEEK4_PAYLOAD)
 check("Week-4 POST refused before day 30", "Not open" in r.text or "Unlocks in" in r.text)
 check("Week-4 not written while locked", db_module.get_response(EMAIL, "post_week4", BATCH) is None)
@@ -141,6 +180,12 @@ check("Tampered token rejected", not eligibility.check_token("deadbeef", EMAIL, 
 
 r = client.get(f"/survey/post-week4?batch={BATCH}&email={EMAIL}&t={tok}")
 check("Signed link prefills the name", 'value="Test Student"' in r.text)
+
+# Try week-4 submission with incorrect password (now unlocked)
+bad_week4_payload = WEEK4_PAYLOAD.copy()
+bad_week4_payload["password"] = "wrong-password"
+r = client.post(f"/survey/post-week4?batch={BATCH}", data=bad_week4_payload)
+check("POST week-4 with bad password fails", "Incorrect password." in r.text)
 
 # ---- WEEK 4: accepted now ----
 r = client.post(f"/survey/post-week4?batch={BATCH}", data=WEEK4_PAYLOAD)

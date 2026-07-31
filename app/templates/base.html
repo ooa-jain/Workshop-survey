@@ -22,6 +22,9 @@
 {% block rail %}{% endblock %}
 
 <div class="wrap{% block wrapclass %}{% endblock %}" data-accent="{{ self.accent() }}">
+  {% if error_msg %}
+    <div class="error-banner">{{ error_msg }}</div>
+  {% endif %}
   {% block content %}{% endblock %}
 
   <footer class="foot">

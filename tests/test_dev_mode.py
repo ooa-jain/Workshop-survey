@@ -28,12 +28,14 @@ def test_dev_mode_and_individual_grant():
     # 1. Submit pre for two users
     pre_payload_1 = {
         "name": "User One", "email": EMAIL1, "batch": BATCH,
+        "password": "my-secret-password",
         "a1": "16-30", "a2": "1-2", "a3": "1", "a4": "under_10", "a5": "4",
         "b1": "a", "b2": "a", "b3": "a", "b4": "a", "b5": "a",
         "c1": "4", "c2": "3", "c3": "3", "d1": "None",
     }
     pre_payload_2 = {
         "name": "User Two", "email": EMAIL2, "batch": BATCH,
+        "password": "my-secret-password",
         "a1": "16-30", "a2": "1-2", "a3": "1", "a4": "under_10", "a5": "4",
         "b1": "a", "b2": "a", "b3": "a", "b4": "a", "b5": "a",
         "c1": "4", "c2": "3", "c3": "3", "d1": "None",

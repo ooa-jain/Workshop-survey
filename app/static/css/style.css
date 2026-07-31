@@ -204,11 +204,11 @@ h1 em{
   font-size:11px;color:var(--muted);margin-top:6px;
 }
 
-input[type=text],input[type=email],textarea{
+input[type=text],input[type=email],input[type=password],textarea{
   width:100%;padding:12px 13px;border:1.75px solid var(--rule);border-radius:var(--radius);
   font-family:var(--body);font-size:15px;margin-top:9px;background:#fff;color:var(--ink);
 }
-input[type=text]:focus,input[type=email]:focus,textarea:focus{
+input[type=text]:focus,input[type=email]:focus,input[type=password]:focus,textarea:focus{
   outline:none;border-color:var(--ink);box-shadow:3px 3px 0 var(--accent);
 }
 textarea{resize:vertical;min-height:78px}
@@ -231,6 +231,8 @@ textarea{resize:vertical;min-height:78px}
 }
 .identity-card input{background:#2C2438;border-color:#463C58;color:#fff;margin-top:0}
 .identity-card input:focus{border-color:var(--acid);box-shadow:3px 3px 0 var(--acid)}
+.identity-card a{color:var(--acid);text-underline-offset:3px}
+.identity-card a:hover{text-decoration:underline}
 .identity-row{display:flex;gap:16px;flex-wrap:wrap}
 .identity-row>div{flex:1 1 220px}
 .privacy-note{font-size:13px;color:#A79CBC;margin-top:14px;max-width:52ch}
