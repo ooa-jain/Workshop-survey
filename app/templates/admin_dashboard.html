@@ -9,6 +9,8 @@
 
 <div class="tabs">
   <a class="on" href="/admin?batch={{ batch }}">Results</a>
+  <a href="/admin/student?batch={{ batch }}">Individual Analysis</a>
+  <a href="/admin/groups?batch={{ batch }}">Groups</a>
   <a href="/admin/reminders?batch={{ batch }}">Week-4 reminders{% if n_due %}<span class="badge">{{ n_due }} due</span>{% endif %}</a>
   <a href="/admin/export.csv?batch={{ batch }}">Download CSV</a>
 </div>

@@ -78,10 +78,11 @@ def dimension_arrow_row(desc, left, right, points, width=560, row_h=54):
         svg.append(f'<text x="{mx}" y="{track_y+22}" text-anchor="middle" '
                     f'style="{FONT};font-size:9.5px" fill="{MUTED}">{_esc(points[1]["label"])}</text>')
 
-    # start point
+    # start point -- label sits BELOW the track so it never collides with the
+    # spectrum end-labels (KNOWLEDGE / JUDGMENT etc.) that sit above it.
     fx = x_of(first["score_0_3"])
     svg.append(f'<circle cx="{fx}" cy="{track_y}" r="6" fill="{INK}"/>')
-    svg.append(f'<text x="{fx}" y="{track_y-16}" text-anchor="middle" '
+    svg.append(f'<text x="{fx}" y="{track_y+20}" text-anchor="middle" '
                 f'style="{FONT};font-size:9.5px" fill="{MUTED}">{first_label}</text>')
 
     # arrow shaft to end point
@@ -94,7 +95,7 @@ def dimension_arrow_row(desc, left, right, points, width=560, row_h=54):
         svg.append(f'<line x1="{fx}" y1="{track_y}" x2="{lx}" y2="{track_y}" '
                     f'stroke="{arrow_colour}" stroke-width="3.5" marker-end="url(#{marker_id})"/>')
     svg.append(f'<circle cx="{lx}" cy="{track_y}" r="7" fill="{LIME}" stroke="{INK}" stroke-width="2"/>')
-    svg.append(f'<text x="{lx}" y="{track_y-16}" text-anchor="middle" '
+    svg.append(f'<text x="{lx}" y="{track_y+20}" text-anchor="middle" '
                 f'style="{FONT};font-size:9.5px;font-weight:600" fill="{TEAL}">{last_label}</text>')
 
     # delta chip, right edge

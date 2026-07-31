@@ -6,11 +6,13 @@
 <header class="masthead">
   <div class="kicker">Admin &middot; {{ batch }}</div>
   <h1>Week-4 <em>reminders</em></h1>
-  <p class="standfirst">Each student's 4-week survey unlocks {{ unlock_days }} days after their own Pre submission and stays open {{ open_days }} days. Admin can also grant individual access or switch on Developer Mode to allow all students to access at once.</p>
+  <p class="standfirst">Each student's 4-week survey unlocks {{ unlock_days }} days after their own Pre submission and stays open {{ open_days }} days. Admin can also grant individual access or switch on Auto-Fill All Options to allow all students to access at once.</p>
 </header>
 
 <div class="tabs">
   <a href="/admin?batch={{ batch }}">Results</a>
+  <a href="/admin/student?batch={{ batch }}">Individual Analysis</a>
+  <a href="/admin/groups?batch={{ batch }}">Groups</a>
   <a class="on" href="/admin/reminders?batch={{ batch }}">Week-4 reminders{% if due %}<span class="badge">{{ due|length }} due</span>{% endif %}</a>
   <a href="/admin/export.csv?batch={{ batch }}">Download CSV</a>
 </div>
@@ -26,12 +28,12 @@
 
 <div class="card" data-accent="violet" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:16px; margin-bottom:24px;">
   <div>
-    <h3 style="margin:0 0 4px 0; font-size:16px;">Developer Mode (Access All at Once)</h3>
+    <h3 style="margin:0 0 4px 0; font-size:16px;">Auto-Fill All Options</h3>
     <p class="note" style="margin:0">
       {% if dev_mode %}
-        <strong style="color:var(--ok,#10b981)">DEVELOPER MODE IS ON:</strong> All students can access the Week-4 survey at the same time, bypassing the countdown.
+        <strong style="color:var(--ok,#10b981)">AUTO-FILL IS ON:</strong> Every survey opens with all answer options pre-filled for testing, and all students can reach the Week-4 survey at once (countdown bypassed).
       {% else %}
-        <strong>Developer Mode is OFF:</strong> Week-4 unlocks {{ unlock_days }} days after Pre submission, or when Admin grants individual access below.
+        <strong>Auto-Fill is OFF:</strong> Surveys behave normally and Week-4 unlocks {{ unlock_days }} days after Pre submission, or when Admin grants individual access below.
       {% endif %}
     </p>
   </div>
@@ -39,7 +41,7 @@
     <input type="hidden" name="batch" value="{{ batch }}">
     <input type="hidden" name="enabled" value="{{ 'false' if dev_mode else 'true' }}">
     <button class="btn {% if dev_mode %}btn-ghost{% endif %}" type="submit">
-      {% if dev_mode %}Turn OFF Developer Mode{% else %}Turn ON Developer Mode{% endif %}
+      {% if dev_mode %}Turn OFF Auto-Fill{% else %}Turn ON Auto-Fill{% endif %}
     </button>
   </form>
 </div>
@@ -70,7 +72,7 @@
             {% if r.manual_access %}
               <span class="badge" style="background:#0284c7; color:#fff;">Admin Granted</span>
             {% elif dev_mode %}
-              <span class="badge" style="background:#8b5cf6; color:#fff;">Dev Mode</span>
+              <span class="badge" style="background:#8b5cf6; color:#fff;">Auto-Fill</span>
             {% else %}
               <span>Automatic</span>
             {% endif %}

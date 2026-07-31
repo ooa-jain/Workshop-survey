@@ -72,6 +72,20 @@ def get_response(email, stage, batch):
     )
 
 
+def delete_responses_on_date(batch, date_str):
+    """Delete every response in this batch submitted on the given calendar
+    day (UTC), date_str formatted 'YYYY-MM-DD'. Used by the admin Groups
+    page to clear a whole day's worth of submissions at once. Returns the
+    number of documents removed."""
+    from datetime import timedelta
+    start = datetime.strptime(date_str, "%Y-%m-%d").replace(tzinfo=timezone.utc)
+    end = start + timedelta(days=1)
+    result = responses_collection().delete_many(
+        {"batch": batch, "submitted_at": {"$gte": start, "$lt": end}}
+    )
+    return result.deleted_count
+
+
 def get_student_arc(email, batch):
     """All stages submitted so far for one student, keyed by stage."""
     email_norm = email.strip().lower()

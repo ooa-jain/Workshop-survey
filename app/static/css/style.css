@@ -237,6 +237,20 @@ textarea{resize:vertical;min-height:78px}
 .identity-row>div{flex:1 1 220px}
 .privacy-note{font-size:13px;color:#A79CBC;margin-top:14px;max-width:52ch}
 
+/* password eye toggle */
+.pwd-wrap{position:relative}
+.pwd-wrap input{padding-right:46px}
+.pwd-eye{
+  position:absolute;top:0;right:0;height:100%;width:44px;
+  display:flex;align-items:center;justify-content:center;
+  background:transparent;border:none;padding:0;cursor:pointer;color:#BEB4D2;
+}
+.pwd-eye:hover{color:var(--acid)}
+.pwd-eye:focus-visible{outline:2px solid var(--acid);outline-offset:-2px}
+.pwd-eye .eye-closed{display:none}
+.pwd-eye.on .eye-open{display:none}
+.pwd-eye.on .eye-closed{display:block}
+
 /* --- buttons -------------------------------------------------------------- */
 .btn,.submit-btn{
   font-family:var(--mono);font-weight:700;letter-spacing:.06em;text-transform:uppercase;
@@ -355,7 +369,7 @@ textarea{resize:vertical;min-height:78px}
 }
 .svgbox{width:100%;height:auto;overflow-x:auto}
 .svgbox svg{width:100%;height:auto;display:block}
-.dim-row{width:100%;max-width:100%;height:auto;margin-bottom:8px}
+.dim-row{width:100%;max-width:660px;height:auto;margin-bottom:14px}
 .dim-row svg{width:100%;height:auto;display:block}
 
 .error-banner{

@@ -120,11 +120,12 @@ SAMEDAY_PAYLOAD = {
     "f2": ["market_gaps", "job_modularity"], "f3": "More time on the group activity.",
 }
 
-# Try same-day submission with incorrect password
-bad_sameday_payload = SAMEDAY_PAYLOAD.copy()
-bad_sameday_payload["password"] = "wrong-password"
-r = client.post(f"/survey/post-sameday?batch={BATCH}", data=bad_sameday_payload)
-check("POST same-day with bad password fails", "Incorrect password." in r.text)
+# The same-day survey no longer asks for a password -- a submission with no
+# password at all still goes through and is matched to Pre by email.
+no_pwd_payload = SAMEDAY_PAYLOAD.copy()
+no_pwd_payload.pop("password", None)
+r = client.post(f"/survey/post-sameday?batch={BATCH}", data=no_pwd_payload)
+check("POST same-day needs no password", r.status_code == 200 and "Incorrect password." not in r.text)
 
 r = client.post(f"/survey/post-sameday?batch={BATCH}", data=SAMEDAY_PAYLOAD)
 check("POST same-day -> 200", r.status_code == 200)
