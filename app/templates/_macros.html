@@ -102,12 +102,17 @@
 {%- endmacro %}
 
 
+{# opts_abcd is a list of (letter, label). The letter is the score key
+   (a=weakest .. d=strongest); students never see it. In test / developer
+   (Auto-Fill) mode the numeric mark a=1, b=2, c=3, d=4 is shown next to each
+   option so a tester can see the value of every choice. #}
 {% macro scenario(name, num, text, opts_abcd) -%}
+{% set _marks = {'a': 1, 'b': 2, 'c': 3, 'd': 4} %}
 <div class="q">
   <div class="q-text"><span class="q-num">{{ num }}</span>{{ text }}</div>
   <div class="options">
     {% for letter, label in opts_abcd %}
-    <label class="opt"><input type="radio" name="{{ name }}" value="{{ letter }}" required>{{ label }}</label>
+    <label class="opt"><input type="radio" name="{{ name }}" value="{{ letter }}" required>{% if autofill %}<b class="opt-mark" title="Score — visible in test mode only">{{ _marks[letter] }}</b>{% endif %}{{ label }}</label>
     {% endfor %}
   </div>
 </div>

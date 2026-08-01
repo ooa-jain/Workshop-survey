@@ -24,10 +24,10 @@ SCENARIOS_PRE_WEEK4 = [
         "num": "B1",
         "text": "A friend tells you they want to become a Business Analyst. What is the most useful first question to ask them?",
         "options": [
-            ("a", "Which companies are hiring Business Analysts right now?"),
-            ("b", "What skills do Business Analyst job descriptions list?"),
-            ("c", "Which parts of that job are likely to change in the next few years?"),
-            ("d", "What specific tasks fill a Business Analyst's week, and which of them create the most value?"),
+            ("a", "Which companies near you are actively hiring for that role this year?"),
+            ("b", "What skills and tools do most Business Analyst job postings ask for?"),
+            ("c", "How is that role likely to look different five years from now?"),
+            ("d", "What does a Business Analyst actually spend a typical week doing, and why?"),
         ]
     },
     {
@@ -35,10 +35,10 @@ SCENARIOS_PRE_WEEK4 = [
         "num": "B2",
         "text": "Two candidates apply for the same analyst role with identical degrees. Who is a hiring manager most likely to pick?",
         "options": [
-            ("a", "The one with the stronger academic record"),
-            ("b", "The one who knows more tools and platforms"),
-            ("c", "The one who has built more projects"),
-            ("d", "The one who can explain why they rejected an approach that looked correct"),
+            ("a", "The one whose university grades and transcript are the strongest"),
+            ("b", "The one who lists the most tools and software on their resume"),
+            ("c", "The one with the largest portfolio of finished personal projects"),
+            ("d", "The one who can explain why a promising approach was wrong"),
         ]
     },
     {
@@ -46,10 +46,10 @@ SCENARIOS_PRE_WEEK4 = [
         "num": "B3",
         "text": "A company automates most of its routine content writing using AI. What new problem is this most likely to create?",
         "options": [
-            ("a", "Nothing much — it will just be cheaper and faster"),
-            ("b", "Writers will lose their jobs"),
-            ("c", "They'll produce more content than anyone can review or keep consistent"),
-            ("d", "Someone must now own accuracy, brand and legal risk for everything AI publishes"),
+            ("a", "Not much changes, the work just gets done more cheaply"),
+            ("b", "Most of the writing team will eventually be let go"),
+            ("c", "They'll publish faster than anyone has time to check it"),
+            ("d", "Someone still has to answer for what gets published and why"),
         ]
     },
     {
@@ -57,10 +57,10 @@ SCENARIOS_PRE_WEEK4 = [
         "num": "B4",
         "text": "You want to stand out for roles in the sports industry. Which is the strongest position to build?",
         "options": [
-            ("a", "Learn a bit of everything so you can fit into any role"),
-            ("b", "Get the most recognised certification in the field"),
-            ("c", "Become excellent at one high-demand skill, like data analysis"),
-            ("d", "Combine two or three ordinary skills — sport, data, design — into something few people offer"),
+            ("a", "Learn a broad mix of sports-industry basics so you can adapt anywhere"),
+            ("b", "Earn the most well-known certification that the sports industry recognises"),
+            ("c", "Go deep on one in-demand skill, such as sports data analysis"),
+            ("d", "Pair your sports knowledge with a second skill few others also have"),
         ]
     },
     {
@@ -68,10 +68,10 @@ SCENARIOS_PRE_WEEK4 = [
         "num": "B5",
         "text": "You're preparing for an interview and you use AI to help. Which use gives you the biggest real advantage?",
         "options": [
-            ("a", "Asking it to write your answers so you can memorise them"),
-            ("b", "Asking it to list common interview questions"),
-            ("c", "Asking it to research the company and summarise it for you"),
-            ("d", "Asking it to argue against your assumptions so you can find the weak points"),
+            ("a", "Ask it to draft full answers for you to learn by heart"),
+            ("b", "Ask it for a list of typical questions you might be asked"),
+            ("c", "Ask it to pull together background information about the company"),
+            ("d", "Ask it to challenge your answers until you find where they break"),
         ]
     }
 ]
@@ -82,10 +82,10 @@ SCENARIOS_SAMEDAY = [
         "num": "B1",
         "text": "A friend tells you they want to become a Digital Marketer. What is the most useful first question to ask them?",
         "options": [
-            ("a", "Which companies are hiring digital marketers?"),
-            ("b", "What tools do digital marketing job ads ask for?"),
-            ("c", "Which parts of digital marketing are changing fastest?"),
-            ("d", "What does a digital marketer actually do each week, and which of those tasks matter most?"),
+            ("a", "Which companies in your city are hiring for that role now?"),
+            ("b", "What tools and platforms do most digital marketing job ads list?"),
+            ("c", "Which parts of digital marketing are likely to look different soon?"),
+            ("d", "What does a digital marketer actually spend most of their week doing?"),
         ]
     },
     {
@@ -93,10 +93,10 @@ SCENARIOS_SAMEDAY = [
         "num": "B2",
         "text": "Two candidates apply for the same product role with identical qualifications. Who is more valuable to the company?",
         "options": [
-            ("a", "The one who scored higher in their degree"),
-            ("b", "The one who has used more product tools"),
-            ("c", "The one who has shipped more side projects"),
-            ("d", "The one who can explain a decision they made with incomplete information, and why"),
+            ("a", "The one whose university transcript shows the higher marks"),
+            ("b", "The one who has hands-on experience with the most product tools"),
+            ("c", "The one who already has more shipped side projects to show"),
+            ("d", "The one who can defend a tough call they made"),
         ]
     },
     {
@@ -104,10 +104,10 @@ SCENARIOS_SAMEDAY = [
         "num": "B3",
         "text": "A hospital starts using AI to draft patient discharge summaries. What new problem does this most likely create?",
         "options": [
-            ("a", "None — it saves doctors time"),
-            ("b", "Junior doctors will have less to do"),
-            ("c", "Summaries get produced faster than staff can cross-check them"),
-            ("d", "Someone must be accountable when an AI-drafted summary contains an error"),
+            ("a", "Nothing much really changes, it just saves doctors some time"),
+            ("b", "Junior doctors will simply have less writing work to do"),
+            ("c", "Summaries pile up faster than staff can double-check them all"),
+            ("d", "Someone still has to answer for a mistake in a summary"),
         ]
     },
     {
@@ -115,10 +115,10 @@ SCENARIOS_SAMEDAY = [
         "num": "B4",
         "text": "You want to stand out in the finance industry. Which is the strongest position to build?",
         "options": [
-            ("a", "Learn a little of everything in finance"),
-            ("b", "Clear the most respected finance certification"),
-            ("c", "Become excellent at financial modelling"),
-            ("d", "Combine finance with something rare next to it — climate policy, or data storytelling"),
+            ("a", "Get a broad working knowledge of most areas in finance"),
+            ("b", "Earn the single most respected certification finance professionals hold"),
+            ("c", "Go deep on one specific skill, such as financial modelling work"),
+            ("d", "Pair core finance skills with a second field few others know"),
         ]
     },
     {
@@ -126,10 +126,10 @@ SCENARIOS_SAMEDAY = [
         "num": "B5",
         "text": "You're writing a business proposal and you use AI to help. Which use gives you the biggest real advantage?",
         "options": [
-            ("a", "Have it write the proposal and submit it"),
-            ("b", "Have it check grammar and formatting"),
-            ("c", "Have it produce a first draft that you then rewrite"),
-            ("d", "Have it stress-test your assumptions and tell you where the proposal would fail"),
+            ("a", "Have it write the whole proposal for you to send"),
+            ("b", "Have it fix the grammar, spelling and formatting for you"),
+            ("c", "Have it draft a rough version for you to rewrite"),
+            ("d", "Have it poke holes in your logic until something breaks"),
         ]
     }
 ]

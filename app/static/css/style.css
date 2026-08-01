@@ -185,6 +185,14 @@ h1 em{
   box-shadow:3px 3px 0 var(--accent);transform:translate(-1px,-1px);
 }
 .opt b{font-family:var(--mono);color:var(--accent)}
+/* numeric option score, only rendered in test / developer (Auto-Fill) mode */
+.opt-mark{
+  display:inline-flex;align-items:center;justify-content:center;
+  min-width:22px;height:22px;padding:0 5px;
+  border:1.5px solid var(--accent);border-radius:99px;
+  font-family:var(--mono);font-size:11.5px;font-weight:700;color:var(--accent);
+  flex:0 0 auto;
+}
 
 .likert{display:flex;gap:7px;margin-top:12px}
 .likert label{
