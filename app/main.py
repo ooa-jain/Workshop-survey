@@ -136,12 +136,13 @@ SCENARIOS_SAMEDAY = [
 
 
 def prep_scenarios(scenarios):
-    """Return the scenarios in random order, each with its answer options
-    shuffled too. The option *values* (the a-d letters the scorer keys on)
-    are preserved -- only the on-screen order changes -- so scoring is
-    unaffected while no two students see the same layout."""
+    """Return the scenarios in their fixed order (B1, B2, B3 ...), but with
+    each one's answer options shuffled. The option *values* (the a-d letters
+    the scorer keys on) are preserved -- only the on-screen order of the
+    answers changes -- so scoring is unaffected while no two students see the
+    same answer layout."""
     prepared = []
-    for sc in random.sample(scenarios, len(scenarios)):
+    for sc in scenarios:
         opts = list(sc["options"])
         random.shuffle(opts)
         prepared.append({**sc, "options": opts})
