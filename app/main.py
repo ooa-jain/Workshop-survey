@@ -185,6 +185,12 @@ def batch_from(request: Request):
     return request.query_params.get("batch", settings.WORKSHOP_BATCH)
 
 
+def _status_url(batch, email):
+    """The student's home/results page for this batch + email."""
+    from urllib.parse import quote
+    return f"/status?batch={quote(batch)}&email={quote(email)}"
+
+
 def check_admin(credentials: HTTPBasicCredentials = Depends(security)):
     ok_user = secrets.compare_digest(credentials.username, settings.ADMIN_USER)
     ok_pass = secrets.compare_digest(credentials.password, settings.ADMIN_PASSWORD)
@@ -419,10 +425,16 @@ async def api_reset_password(request: Request):
 @app.get("/survey/pre", response_class=HTMLResponse)
 def pre_form(request: Request):
     batch = batch_from(request)
+    email = (request.query_params.get("email") or "").strip()
+    # Pre is write-once. If this student has already submitted it, there's
+    # nothing to edit -- send them to their results/home page instead of the
+    # form, so a "Pre" click only ever shows results.
+    if email and db.get_response(email, "pre", batch):
+        return RedirectResponse(_status_url(batch, email), status_code=303)
     b_scenarios = prep_scenarios(SCENARIOS_PRE_WEEK4)
     return templates.TemplateResponse(request, "pre.html", base_ctx(
         request, batch,
-        prefill_email=(request.query_params.get("email") or "").strip(),
+        prefill_email=email,
         prefill_name="",
         b_scenarios=b_scenarios,
         autofill=db.get_dev_mode(),
@@ -438,22 +450,16 @@ async def pre_submit(request: Request):
     email = require(form, "email", "Email")
     password = require(form, "password", "Password")
 
-    # Check if they already have a password set (resubmission)
+    # Pre is write-once. Once a student has a Pre on record it can't be
+    # edited or overwritten -- bounce them to their results page. Their
+    # password is set here, on that first (and only) submission, and reused
+    # to gate the Week-4 survey.
     pre_doc = db.get_response(email, "pre", batch)
-    if pre_doc and pre_doc.get("password_hash"):
-        from . import auth
-        if not auth.verify_password(password, pre_doc["password_hash"], pre_doc["password_salt"]):
-            b_scenarios = prep_scenarios(SCENARIOS_PRE_WEEK4)
-            return templates.TemplateResponse(request, "pre.html", base_ctx(
-                request, batch, prefill_email=email, prefill_name=name,
-                error_msg="Incorrect password. Cannot overwrite pre-survey answers.",
-                b_scenarios=b_scenarios,
-            ))
-        pwd_hash = pre_doc["password_hash"]
-        pwd_salt = pre_doc["password_salt"]
-    else:
-        from . import auth
-        pwd_hash, pwd_salt = auth.hash_password(password)
+    if pre_doc:
+        return RedirectResponse(_status_url(batch, email), status_code=303)
+
+    from . import auth
+    pwd_hash, pwd_salt = auth.hash_password(password)
 
     b_answers = [require(form, f"b{i}", f"Scenario B{i}") for i in range(1, 6)]
     ji = scoring.score_job_intelligence(b_answers)
@@ -758,27 +764,55 @@ def _send_week4_email(name, email, ji, js, quad, quad_series, dim_rows_png, scor
 # ADMIN DASHBOARD
 # ---------------------------------------------------------------------------
 
-@app.get("/admin", response_class=HTMLResponse)
-def admin_dashboard(request: Request, username: str = Depends(check_admin)):
-    batch = batch_from(request)
+def _avg(vals, digits=1):
+    return round(sum(vals) / len(vals), digits) if vals else None
 
-    pre_all = db.all_responses(batch, "pre")
-    sameday_all = db.all_responses(batch, "post_sameday")
-    week4_all = db.all_responses(batch, "post_week4")
+
+def build_cohort_analysis(batch):
+    """Two aggregate views the admin sees on both the Results and Groups
+    pages, computed once from the same DB reads:
+
+      outcome  -- "first day": how the cohort moved Pre -> Same-day, for every
+                  student who filled both. Same-day carries no Job-Search
+                  score, so this is a Job-Intelligence movement story.
+      impact   -- "four weeks on": the full Pre -> Week-4 picture, every
+                  student's arrow on the quadrant field plus the dimension,
+                  trajectory and credibility analysis.
+    """
+    # ---- Outcome: Pre -> Same-day -----------------------------------------
+    sd_matched = db.matched_sameday(batch)
+    sd_pre = [m["pre"]["scores"]["job_intelligence"]["total"] for m in sd_matched]
+    sd_now = [m["sameday"]["scores"]["job_intelligence"]["total"] for m in sd_matched]
+    sd_dim_rows = []
+    for i, dim in enumerate(scoring.JI_DIMENSIONS):
+        deltas = [
+            m["sameday"]["scores"]["job_intelligence"]["dimensions"][i]["score_0_3"]
+            - m["pre"]["scores"]["job_intelligence"]["dimensions"][i]["score_0_3"]
+            for m in sd_matched
+        ]
+        sd_dim_rows.append({"desc": dim["desc"], "left": dim["left"], "right": dim["right"],
+                            "mean_delta": round(sum(deltas) / len(deltas), 2) if deltas else 0.0})
+    sd_slope = [{"ji_pre": m["pre"]["scores"]["job_intelligence"]["total"],
+                 "ji_w4": m["sameday"]["scores"]["job_intelligence"]["total"]} for m in sd_matched]
+
+    outcome = {
+        "has_data": bool(sd_matched),
+        "n": len(sd_matched),
+        "ji_pre_mean": _avg(sd_pre),
+        "ji_latest_mean": _avg(sd_now),
+        "ji_delta": (round(_avg(sd_now) - _avg(sd_pre), 1) if sd_matched else None),
+        "bars_svg": charts_svg.diverging_bars_svg(sd_dim_rows, span_label="pre → same day") if sd_matched else None,
+        "slope_svg": charts_svg.slopegraph_svg(sd_slope, col_labels=["Pre", "Same day"]) if sd_matched else None,
+    }
+
+    # ---- Impact: Pre -> Week-4 --------------------------------------------
     matched = db.matched_students(batch)
-
-    n_due = sum(1 for s in db.cohort_arcs(batch) if eligibility.is_due_for_week4_reminder(s["arc"]))
-
-    students_for_charts = []
-    for m in matched:
-        pre_s = m["pre"]["scores"]
-        w4_s = m["week4"]["scores"]
-        students_for_charts.append({
-            "job_search_pre": pre_s["job_search"]["total"],
-            "ji_pre": pre_s["job_intelligence"]["total"],
-            "job_search_w4": w4_s["job_search"]["total"],
-            "ji_w4": w4_s["job_intelligence"]["total"],
-        })
+    students_for_charts = [{
+        "job_search_pre": m["pre"]["scores"]["job_search"]["total"],
+        "ji_pre": m["pre"]["scores"]["job_intelligence"]["total"],
+        "job_search_w4": m["week4"]["scores"]["job_search"]["total"],
+        "ji_w4": m["week4"]["scores"]["job_intelligence"]["total"],
+    } for m in matched]
 
     quad_counts_pre = {"Volume Applicant": 0, "Busy Strategist": 0, "Drifting": 0, "Job Intelligent": 0}
     quad_counts_w4 = dict(quad_counts_pre)
@@ -793,11 +827,11 @@ def admin_dashboard(request: Request, username: str = Depends(check_admin)):
             - m["pre"]["scores"]["job_intelligence"]["dimensions"][i]["score_0_3"]
             for m in matched
         ]
-        mean_delta = round(sum(deltas) / len(deltas), 2) if deltas else 0.0
-        dim_rows.append({"desc": dim["desc"], "left": dim["left"], "right": dim["right"], "mean_delta": mean_delta})
+        dim_rows.append({"desc": dim["desc"], "left": dim["left"], "right": dim["right"],
+                         "mean_delta": round(sum(deltas) / len(deltas), 2) if deltas else 0.0})
 
     slope_students = [{"ji_pre": m["pre"]["scores"]["job_intelligence"]["total"],
-                        "ji_w4": m["week4"]["scores"]["job_intelligence"]["total"]} for m in matched]
+                       "ji_w4": m["week4"]["scores"]["job_intelligence"]["total"]} for m in matched]
 
     control_deltas = [
         scoring.control_shift(m["pre"]["scores"]["control_mean"], m["week4"]["scores"]["control_mean"])["delta"]
@@ -805,15 +839,36 @@ def admin_dashboard(request: Request, username: str = Depends(check_admin)):
     ]
     mean_control_shift = round(sum(control_deltas) / len(control_deltas), 2) if control_deltas else 0.0
 
+    impact = {
+        "has_data": bool(matched),
+        "n": len(matched),
+        "quad_counts_pre": quad_counts_pre,
+        "quad_counts_w4": quad_counts_w4,
+        "mean_control_shift": mean_control_shift,
+        "field_svg": charts_svg.quadrant_field_svg(students_for_charts),
+        "bars_svg": charts_svg.diverging_bars_svg(dim_rows),
+        "slope_svg": charts_svg.slopegraph_svg(slope_students, has_sameday=False),
+    }
+
+    return {"outcome": outcome, "impact": impact}
+
+
+@app.get("/admin", response_class=HTMLResponse)
+def admin_dashboard(request: Request, username: str = Depends(check_admin)):
+    batch = batch_from(request)
+
+    pre_all = db.all_responses(batch, "pre")
+    sameday_all = db.all_responses(batch, "post_sameday")
+    week4_all = db.all_responses(batch, "post_week4")
+
+    n_due = sum(1 for s in db.cohort_arcs(batch) if eligibility.is_due_for_week4_reminder(s["arc"]))
+    analysis = build_cohort_analysis(batch)
+
     return templates.TemplateResponse(request, "admin_dashboard.html", base_ctx(
         request, batch,
         n_pre=len(pre_all), n_sameday=len(sameday_all), n_week4=len(week4_all),
-        n_matched=len(matched), n_due=n_due,
-        quad_counts_pre=quad_counts_pre, quad_counts_w4=quad_counts_w4,
-        mean_control_shift=mean_control_shift,
-        field_svg=charts_svg.quadrant_field_svg(students_for_charts),
-        bars_svg=charts_svg.diverging_bars_svg(dim_rows),
-        slope_svg=charts_svg.slopegraph_svg(slope_students, has_sameday=False),
+        n_matched=analysis["impact"]["n"], n_due=n_due,
+        analysis=analysis,
     ))
 
 
@@ -989,6 +1044,7 @@ def admin_groups(request: Request, username: str = Depends(check_admin)):
 
     return templates.TemplateResponse(request, "admin_groups.html", base_ctx(
         request, batch, groups=groups, overall=overall, n_due=n_due,
+        analysis=build_cohort_analysis(batch),
         deleted=request.query_params.get("deleted"),
     ))
 

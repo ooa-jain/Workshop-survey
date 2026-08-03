@@ -237,45 +237,49 @@ def quadrant_field_svg(students, width=640, height=470):
     return "".join(parts)
 
 
-def diverging_bars_svg(dim_rows, width=640, height=None):
-    """dim_rows: list of {"desc","left","right","mean_delta"} (0-3 scale), any order -- sorted here descending."""
+def diverging_bars_svg(dim_rows, width=640, height=None, span_label="pre \u2192 week 4"):
+    """dim_rows: list of {"desc","left","right","mean_delta"} (0-3 scale), any order -- sorted here descending.
+    span_label names the two ends of the comparison (e.g. 'pre \u2192 same day')."""
     rows = sorted(dim_rows, key=lambda r: -r["mean_delta"])
     row_h = 46
     height = height or (30 + row_h * len(rows) + 40)
     x0 = 250
-    max_delta = max((r["mean_delta"] for r in rows), default=1) or 1
+    max_delta = max((abs(r["mean_delta"]) for r in rows), default=1) or 1
     scale = (width - x0 - 60) / max(max_delta, 1.5)
 
     parts = [f'<svg viewBox="0 0 {width} {height}" role="img" aria-label="Mean change per dimension">']
     parts.append(f'<line x1="{x0}" y1="14" x2="{x0}" y2="{height-30}" stroke="{INK}" stroke-width="1.5"/>')
     parts.append(f'<text x="{x0-4}" y="{height-10}" text-anchor="start" style="{FONT};font-size:10px" fill="{MUTED}">0</text>')
     parts.append(f'<text x="{x0}" y="{height-10}" text-anchor="start" style="{FONT};font-size:10px" fill="{MUTED}">'
-                  f'Mean change per dimension, pre \u2192 week 4 (0\u20133 scale)</text>')
+                  f'Mean change per dimension, {_esc(span_label)} (0\u20133 scale)</text>')
 
     for i, r in enumerate(rows):
         y = 24 + i * row_h
-        w = max(r["mean_delta"], 0) * scale
-        strong = r["mean_delta"] >= 0.9
-        colour = TEAL if strong else "#0E8F96"
+        delta = r["mean_delta"]
+        w = max(delta, 0) * scale
+        strong = delta >= 0.9
+        colour = WARN if delta < 0 else (TEAL if strong else "#0E8F96")
+        sign = "\u2212" if delta < 0 else "+"
         parts.append(f'<text x="{x0-14}" y="{y+11}" text-anchor="end" '
                       f'style="font-family:Archivo,sans-serif;font-size:12px;font-weight:600" fill="{INK}">{_esc(r["desc"])}</text>')
         parts.append(f'<text x="{x0-14}" y="{y+25}" text-anchor="end" style="{FONT};font-size:10px" fill="{MUTED}">'
                       f'{_esc(r["left"])} \u2192 {_esc(r["right"])}</text>')
         parts.append(f'<rect x="{x0}" y="{y}" width="{w}" height="22" fill="{colour}"/>')
         parts.append(f'<text x="{x0+w+9}" y="{y+16}" style="{FONT};font-size:12.5px;font-weight:600" fill="{colour}">'
-                      f'+{r["mean_delta"]:.2f}</text>')
+                      f'{sign}{abs(delta):.2f}</text>')
     parts.append("</svg>")
     return "".join(parts)
 
 
-def slopegraph_svg(students, width=640, height=380, has_sameday=False):
+def slopegraph_svg(students, width=640, height=380, has_sameday=False, col_labels=None):
     """
     students: list of {"label"(unused), "ji_pre", "ji_sameday"(optional), "ji_w4"}
     Renders individual thin lines plus a heavy cohort-mean line across
     2 or 3 columns depending on whether same-day data is available for
-    (at least some of) the cohort.
+    (at least some of) the cohort. col_labels overrides the column captions
+    (e.g. ["Pre", "Same day"]) when the second point isn't Week 4.
     """
-    labels = ["Pre", "Week 4"] if not has_sameday else ["Pre", "Same day", "Week 4"]
+    labels = col_labels or (["Pre", "Week 4"] if not has_sameday else ["Pre", "Same day", "Week 4"])
     n_cols = len(labels)
     x0, x1 = 70, width - 50
     cols = [x0 + i * (x1 - x0) / (n_cols - 1) for i in range(n_cols)]

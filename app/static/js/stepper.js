@@ -192,6 +192,13 @@
         gateOk = !!d.ok;
         if (!skipPassword) hasPassword = !!d.has_password;
 
+        // Pre is write-once: a student who already filled it can't edit it,
+        // so send them straight to their results/home page.
+        if (stage === "pre" && d.state === "done" && d.status_url) {
+          window.location.href = d.status_url;
+          return;
+        }
+
         if (d.state === "done") {
           paintGate("done", "Already submitted",
             "You've filled this one in. Carrying on will replace your earlier answers.");

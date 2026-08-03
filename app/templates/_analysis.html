@@ -1,0 +1,86 @@
+{# =========================================================================
+   Shared cohort analysis blocks, rendered on both the admin Results page
+   and the admin Groups page from the dict build_cohort_analysis() returns.
+
+     outcome_block -- "first day": how the cohort moved Pre -> Same-day.
+     impact_block  -- "four weeks on": the full Pre -> Week-4 picture, with
+                      one arrow per student plus the dimension, trajectory
+                      and credibility analysis.
+   ========================================================================= #}
+
+{% macro outcome_block(o) -%}
+<div class="card" data-accent="tang">
+  <div class="tab"><span class="tab-n">◆</span>Outcome &middot; first day</div>
+  <p class="note" style="margin-bottom:16px">Where the cohort landed by the end of the workshop day &mdash; Pre &rarr; Same-day, for the {{ o.n }} student{{ '' if o.n == 1 else 's' }} who filled both. (Same-day measures Job&nbsp;Intelligence only.)</p>
+  {% if o.has_data %}
+  <div class="hero-stat" style="margin-bottom:20px">
+    <div><div class="lab">Filled both</div><div class="val">{{ o.n }}</div></div>
+    <div><div class="lab">Job Intelligence (Pre)</div><div class="val">{{ o.ji_pre_mean }}</div></div>
+    <div><div class="lab">Job Intelligence (Same day)</div><div class="val">{{ o.ji_latest_mean }}</div></div>
+    <div><div class="lab">Mean shift</div><div class="val">{% if o.ji_delta is not none %}{{ '+' if o.ji_delta > 0 else '' }}{{ o.ji_delta }}{% else %}&mdash;{% endif %}</div></div>
+  </div>
+  <p class="note" style="margin-bottom:8px">Job Intelligence, Pre &rarr; Same day (0&ndash;100).</p>
+  <div class="svgbox">{{ o.slope_svg | safe }}</div>
+  <p class="note" style="margin:20px 0 8px">Which parts of the day landed &mdash; mean change per dimension.</p>
+  <div class="svgbox">{{ o.bars_svg | safe }}</div>
+  {% else %}
+  <p class="note" style="margin-bottom:0">No student has filled both the Pre and Same-day surveys yet. This fills in as same-day responses come in.</p>
+  {% endif %}
+</div>
+{%- endmacro %}
+
+
+{% macro impact_block(m) -%}
+<div class="card" data-accent="violet">
+  <div class="tab"><span class="tab-n">01</span>Impact &middot; where everyone moved</div>
+  <p class="note" style="margin-bottom:16px">One faint arrow per matched student, Pre &rarr; Week&nbsp;4 ({{ m.n }} matched). The heavy arrow is the cohort mean.</p>
+  {% if m.has_data %}
+  <div class="svgbox">{{ m.field_svg | safe }}</div>
+  {% else %}
+  <p class="note" style="margin-bottom:0">Nothing to compare yet &mdash; the Impact charts fill in once at least one student has submitted both a Pre and a Week-4 survey.</p>
+  {% endif %}
+</div>
+
+{% if m.has_data %}
+<div class="card" data-accent="coral">
+  <div class="tab"><span class="tab-n">02</span>Impact &middot; quadrant population</div>
+  <div class="tbl-scroll">
+  <table class="tbl">
+    <thead><tr><th>Quadrant</th><th class="num">Pre</th><th class="num">Week 4</th><th class="num">Change</th></tr></thead>
+    <tbody>
+      {% for label in ["Volume Applicant","Busy Strategist","Drifting","Job Intelligent"] %}
+      {% set delta = m.quad_counts_w4[label] - m.quad_counts_pre[label] %}
+      <tr>
+        <td class="who">{{ label }}</td>
+        <td class="num">{{ m.quad_counts_pre[label] }}</td>
+        <td class="num">{{ m.quad_counts_w4[label] }}</td>
+        <td class="num">{{ '+' if delta > 0 else '' }}{{ delta }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  </div>
+</div>
+
+<div class="card" data-accent="aqua">
+  <div class="tab"><span class="tab-n">03</span>Impact &middot; which parts of the day landed</div>
+  <p class="note" style="margin-bottom:16px">Mean change per dimension, Pre &rarr; Week&nbsp;4, on the 0&ndash;3 scale.</p>
+  <div class="svgbox">{{ m.bars_svg | safe }}</div>
+</div>
+
+<div class="card" data-accent="tang">
+  <div class="tab"><span class="tab-n">04</span>Impact &middot; Job Intelligence over time</div>
+  <div class="svgbox">{{ m.slope_svg | safe }}</div>
+</div>
+
+<div class="card" data-accent="violet">
+  <div class="tab"><span class="tab-n">05</span>Impact &middot; is the shift believable?</div>
+  <p class="note" style="margin-bottom:0">Mean absolute shift on control items C1&ndash;C3, Pre &rarr; Week 4: <b>{{ m.mean_control_shift }}</b>
+    {% if m.mean_control_shift < 0.3 %}&mdash; below the 0.3 threshold, so the Job Intelligence movement looks credible.
+    {% elif m.mean_control_shift <= 0.5 %}&mdash; in the 0.3&ndash;0.5 caveat range. Note this when presenting.
+    {% else %}&mdash; above 0.5. Treat the Job Intelligence gain with real caution; this may be blanket agreement rather than genuine movement.
+    {% endif %}
+  </p>
+</div>
+{% endif %}
+{%- endmacro %}
