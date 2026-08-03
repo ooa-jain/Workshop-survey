@@ -219,16 +219,23 @@ check("Status page shows submitted state", "Submitted" in r.text)
 # ---- admin ----
 r = client.get(f"/admin?batch={BATCH}", auth=auth)
 check("Admin dashboard -> 200", r.status_code == 200)
-check("Results page shows Outcome (first day)", "Outcome" in r.text)
-check("Results page shows Impact (week 4)", "Impact" in r.text and "where everyone moved" in r.text)
+check("Results page links to the Outcome + Impact tabs",
+      "/admin/outcome" in r.text and "/admin/impact" in r.text)
 r = client.get(f"/admin?batch={BATCH}")
 check("Admin requires auth", r.status_code == 401)
 
-# Groups page carries the same Outcome + Impact analysis.
-r = client.get(f"/admin/groups?batch={BATCH}", auth=auth)
-check("Admin groups -> 200", r.status_code == 200)
-check("Groups page shows Outcome analysis", "Outcome" in r.text)
-check("Groups page shows Impact analysis", "Impact" in r.text and "where everyone moved" in r.text)
+# Outcome tab: first-day (Pre -> Same-day) analysis with headcounts.
+r = client.get(f"/admin/outcome?batch={BATCH}", auth=auth)
+check("Outcome tab -> 200", r.status_code == 200)
+check("Outcome tab shows first-day movement", "first day" in r.text and "Rose" in r.text)
+check("Outcome tab requires auth", client.get(f"/admin/outcome?batch={BATCH}").status_code == 401)
+
+# Impact tab: four-week journey with quadrant (role) migration analysis.
+r = client.get(f"/admin/impact?batch={BATCH}", auth=auth)
+check("Impact tab -> 200", r.status_code == 200)
+check("Impact tab shows role changes + where everyone moved",
+      "Role changes" in r.text and "Where everyone moved" in r.text)
+check("Impact tab requires auth", client.get(f"/admin/impact?batch={BATCH}").status_code == 401)
 
 r = client.get(f"/admin/export.csv?batch={BATCH}", auth=auth)
 check("CSV export -> 200", r.status_code == 200 and "job_intelligence" in r.text)

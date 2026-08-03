@@ -9,13 +9,8 @@
   <p class="standfirst">Select any student to inspect their score progression across the three surveys, dimension movement, quadrant trajectory, and qualitative text responses.</p>
 </header>
 
-<div class="tabs">
-  <a href="/admin?batch={{ batch }}">Results</a>
-  <a class="on" href="/admin/student?batch={{ batch }}">Individual Analysis</a>
-  <a href="/admin/groups?batch={{ batch }}">Groups</a>
-  <a href="/admin/reminders?batch={{ batch }}">Week-4 reminders{% if n_due %}<span class="badge">{{ n_due }} due</span>{% endif %}</a>
-  <a href="/admin/export.csv?batch={{ batch }}">Download CSV</a>
-</div>
+{% from "_macros.html" import admin_tabs with context %}
+{{ admin_tabs('student', batch, n_due) }}
 
 <!-- Student Selector -->
 <div class="card flat" style="margin-bottom:24px;">

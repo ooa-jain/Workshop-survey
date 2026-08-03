@@ -764,74 +764,120 @@ def _send_week4_email(name, email, ji, js, quad, quad_series, dim_rows_png, scor
 # ADMIN DASHBOARD
 # ---------------------------------------------------------------------------
 
+QUADRANTS = ["Job Intelligent", "Busy Strategist", "Volume Applicant", "Drifting"]
+
+
 def _avg(vals, digits=1):
     return round(sum(vals) / len(vals), digits) if vals else None
 
 
-def build_cohort_analysis(batch):
-    """Two aggregate views the admin sees on both the Results and Groups
-    pages, computed once from the same DB reads:
-
-      outcome  -- "first day": how the cohort moved Pre -> Same-day, for every
-                  student who filled both. Same-day carries no Job-Search
-                  score, so this is a Job-Intelligence movement story.
-      impact   -- "four weeks on": the full Pre -> Week-4 picture, every
-                  student's arrow on the quadrant field plus the dimension,
-                  trajectory and credibility analysis.
-    """
-    # ---- Outcome: Pre -> Same-day -----------------------------------------
-    sd_matched = db.matched_sameday(batch)
-    sd_pre = [m["pre"]["scores"]["job_intelligence"]["total"] for m in sd_matched]
-    sd_now = [m["sameday"]["scores"]["job_intelligence"]["total"] for m in sd_matched]
-    sd_dim_rows = []
-    for i, dim in enumerate(scoring.JI_DIMENSIONS):
-        deltas = [
-            m["sameday"]["scores"]["job_intelligence"]["dimensions"][i]["score_0_3"]
-            - m["pre"]["scores"]["job_intelligence"]["dimensions"][i]["score_0_3"]
-            for m in sd_matched
-        ]
-        sd_dim_rows.append({"desc": dim["desc"], "left": dim["left"], "right": dim["right"],
-                            "mean_delta": round(sum(deltas) / len(deltas), 2) if deltas else 0.0})
-    sd_slope = [{"ji_pre": m["pre"]["scores"]["job_intelligence"]["total"],
-                 "ji_w4": m["sameday"]["scores"]["job_intelligence"]["total"]} for m in sd_matched]
-
-    outcome = {
-        "has_data": bool(sd_matched),
-        "n": len(sd_matched),
-        "ji_pre_mean": _avg(sd_pre),
-        "ji_latest_mean": _avg(sd_now),
-        "ji_delta": (round(_avg(sd_now) - _avg(sd_pre), 1) if sd_matched else None),
-        "bars_svg": charts_svg.diverging_bars_svg(sd_dim_rows, span_label="pre → same day") if sd_matched else None,
-        "slope_svg": charts_svg.slopegraph_svg(sd_slope, col_labels=["Pre", "Same day"]) if sd_matched else None,
+def _direction(deltas):
+    """Split a list of deltas into rose / fell / unchanged counts."""
+    return {
+        "rose": sum(1 for d in deltas if d > 0),
+        "fell": sum(1 for d in deltas if d < 0),
+        "same": sum(1 for d in deltas if d == 0),
     }
 
-    # ---- Impact: Pre -> Week-4 --------------------------------------------
-    matched = db.matched_students(batch)
-    students_for_charts = [{
-        "job_search_pre": m["pre"]["scores"]["job_search"]["total"],
-        "ji_pre": m["pre"]["scores"]["job_intelligence"]["total"],
-        "job_search_w4": m["week4"]["scores"]["job_search"]["total"],
-        "ji_w4": m["week4"]["scores"]["job_intelligence"]["total"],
-    } for m in matched]
 
-    quad_counts_pre = {"Volume Applicant": 0, "Busy Strategist": 0, "Drifting": 0, "Job Intelligent": 0}
-    quad_counts_w4 = dict(quad_counts_pre)
-    for m in matched:
-        quad_counts_pre[m["pre"]["scores"]["quadrant"]] += 1
-        quad_counts_w4[m["week4"]["scores"]["quadrant"]] += 1
-
-    dim_rows = []
+def _mean_dim_rows(matched, first_key, second_key):
+    """Per-dimension mean 0-3 movement between two stage keys, one row per
+    Job-Intelligence dimension, ready for the diverging-bars chart."""
+    rows = []
     for i, dim in enumerate(scoring.JI_DIMENSIONS):
         deltas = [
-            m["week4"]["scores"]["job_intelligence"]["dimensions"][i]["score_0_3"]
-            - m["pre"]["scores"]["job_intelligence"]["dimensions"][i]["score_0_3"]
+            m[second_key]["scores"]["job_intelligence"]["dimensions"][i]["score_0_3"]
+            - m[first_key]["scores"]["job_intelligence"]["dimensions"][i]["score_0_3"]
             for m in matched
         ]
-        dim_rows.append({"desc": dim["desc"], "left": dim["left"], "right": dim["right"],
-                         "mean_delta": round(sum(deltas) / len(deltas), 2) if deltas else 0.0})
+        rows.append({"desc": dim["desc"], "left": dim["left"], "right": dim["right"],
+                     "mean_delta": round(sum(deltas) / len(deltas), 2) if deltas else 0.0})
+    return rows
 
-    slope_students = [{"ji_pre": m["pre"]["scores"]["job_intelligence"]["total"],
-                       "ji_w4": m["week4"]["scores"]["job_intelligence"]["total"]} for m in matched]
+
+def build_outcome(batch):
+    """'First day' view: how the cohort moved Pre -> Same-day, for every
+    student who filled both. Same-day carries no Job-Search score, so this is
+    a Job-Intelligence movement story -- who rose, who fell, and by how much."""
+    sd = db.matched_sameday(batch)
+    rows = []
+    for m in sd:
+        ji_pre = m["pre"]["scores"]["job_intelligence"]["total"]
+        ji_now = m["sameday"]["scores"]["job_intelligence"]["total"]
+        rows.append({"name": m["name"], "email": m["email"],
+                     "ji_pre": ji_pre, "ji_now": ji_now, "delta": round(ji_now - ji_pre, 1)})
+    rows.sort(key=lambda r: r["delta"], reverse=True)
+
+    deltas = [r["delta"] for r in rows]
+    dirs = _direction(deltas)
+    ji_pre_mean = _avg([r["ji_pre"] for r in rows])
+    ji_now_mean = _avg([r["ji_now"] for r in rows])
+    dim_rows = _mean_dim_rows(sd, "pre", "sameday")
+
+    return {
+        "has_data": bool(sd),
+        "n": len(sd),
+        "n_pre": len(db.all_responses(batch, "pre")),
+        "n_sameday": len(db.all_responses(batch, "post_sameday")),
+        "rose": dirs["rose"], "fell": dirs["fell"], "same": dirs["same"],
+        "pct_improved": (round(dirs["rose"] / len(sd) * 100) if sd else None),
+        "ji_pre_mean": ji_pre_mean,
+        "ji_now_mean": ji_now_mean,
+        "ji_delta": (round(ji_now_mean - ji_pre_mean, 1) if sd else None),
+        "best": rows[0] if rows else None,
+        "rows": rows,
+        "bars_svg": charts_svg.diverging_bars_svg(dim_rows, span_label="pre → same day") if sd else None,
+        "slope_svg": charts_svg.slopegraph_svg(
+            [{"ji_pre": r["ji_pre"], "ji_w4": r["ji_now"]} for r in rows],
+            col_labels=["Pre", "Same day"]) if sd else None,
+    }
+
+
+def build_impact(batch):
+    """'Four weeks on' view: the full Pre -> Week-4 journey for every matched
+    student -- Job-Intelligence and Job-Search movement, quadrant (role)
+    migrations as a from/to matrix, per-dimension change, trajectory, and the
+    control-item credibility check. This is the deep-dive dashboard."""
+    matched = db.matched_students(batch)
+
+    rows = []
+    ji_deltas, js_deltas = [], []
+    has_sameday = False
+    quad_counts_pre = {q: 0 for q in QUADRANTS}
+    quad_counts_w4 = {q: 0 for q in QUADRANTS}
+    trans = {a: {b: 0 for b in QUADRANTS} for a in QUADRANTS}
+    field_students, slope_students = [], []
+
+    for m in matched:
+        pre_s, w4_s = m["pre"]["scores"], m["week4"]["scores"]
+        ji_pre = pre_s["job_intelligence"]["total"]
+        ji_w4 = w4_s["job_intelligence"]["total"]
+        js_pre = pre_s["job_search"]["total"]
+        js_w4 = w4_s["job_search"]["total"]
+        qp, qw = pre_s["quadrant"], w4_s["quadrant"]
+        ji_d, js_d = round(ji_w4 - ji_pre, 1), round(js_w4 - js_pre, 1)
+
+        ji_deltas.append(ji_d)
+        js_deltas.append(js_d)
+        quad_counts_pre[qp] += 1
+        quad_counts_w4[qw] += 1
+        trans[qp][qw] += 1
+
+        sd = m.get("sameday")
+        ji_sd = sd["scores"]["job_intelligence"]["total"] if sd else None
+        if sd:
+            has_sameday = True
+
+        field_students.append({"job_search_pre": js_pre, "ji_pre": ji_pre,
+                               "job_search_w4": js_w4, "ji_w4": ji_w4})
+        slope_students.append({"ji_pre": ji_pre, "ji_w4": ji_w4,
+                               "ji_sameday": ji_sd if ji_sd is not None else ji_pre})
+        rows.append({"name": m["name"], "email": m["email"],
+                     "quad_pre": qp, "quad_w4": qw, "moved": qp != qw,
+                     "ji_pre": ji_pre, "ji_w4": ji_w4, "ji_delta": ji_d,
+                     "js_pre": js_pre, "js_w4": js_w4, "js_delta": js_d,
+                     "ji_sameday": ji_sd})
+    rows.sort(key=lambda r: r["ji_delta"], reverse=True)
 
     control_deltas = [
         scoring.control_shift(m["pre"]["scores"]["control_mean"], m["week4"]["scores"]["control_mean"])["delta"]
@@ -839,18 +885,39 @@ def build_cohort_analysis(batch):
     ]
     mean_control_shift = round(sum(control_deltas) / len(control_deltas), 2) if control_deltas else 0.0
 
-    impact = {
+    # Quadrant (role) migrations, biggest first, self-transitions excluded.
+    transitions = [{"from": a, "to": b, "count": trans[a][b]}
+                   for a in QUADRANTS for b in QUADRANTS if a != b and trans[a][b]]
+    transitions.sort(key=lambda t: -t["count"])
+    n_moved_quad = sum(1 for r in rows if r["moved"])
+
+    return {
         "has_data": bool(matched),
         "n": len(matched),
+        "n_pre": len(db.all_responses(batch, "pre")),
+        "n_week4": len(db.all_responses(batch, "post_week4")),
+        "has_sameday": has_sameday,
+        "quadrants": QUADRANTS,
         "quad_counts_pre": quad_counts_pre,
         "quad_counts_w4": quad_counts_w4,
+        "trans": trans,
+        "transitions": transitions,
+        "n_moved_quad": n_moved_quad,
+        "n_same_quad": len(matched) - n_moved_quad,
+        "ji": {**_direction(ji_deltas),
+               "pre_mean": _avg([r["ji_pre"] for r in rows]),
+               "w4_mean": _avg([r["ji_w4"] for r in rows]),
+               "delta": (round(_avg([r["ji_w4"] for r in rows]) - _avg([r["ji_pre"] for r in rows]), 1) if rows else None)},
+        "js": {**_direction(js_deltas),
+               "pre_mean": _avg([r["js_pre"] for r in rows]),
+               "w4_mean": _avg([r["js_w4"] for r in rows]),
+               "delta": (round(_avg([r["js_w4"] for r in rows]) - _avg([r["js_pre"] for r in rows]), 1) if rows else None)},
         "mean_control_shift": mean_control_shift,
-        "field_svg": charts_svg.quadrant_field_svg(students_for_charts),
-        "bars_svg": charts_svg.diverging_bars_svg(dim_rows),
-        "slope_svg": charts_svg.slopegraph_svg(slope_students, has_sameday=False),
+        "rows": rows,
+        "field_svg": charts_svg.quadrant_field_svg(field_students),
+        "bars_svg": charts_svg.diverging_bars_svg(_mean_dim_rows(matched, "pre", "week4")),
+        "slope_svg": charts_svg.slopegraph_svg(slope_students, has_sameday=has_sameday),
     }
-
-    return {"outcome": outcome, "impact": impact}
 
 
 @app.get("/admin", response_class=HTMLResponse)
@@ -862,13 +929,39 @@ def admin_dashboard(request: Request, username: str = Depends(check_admin)):
     week4_all = db.all_responses(batch, "post_week4")
 
     n_due = sum(1 for s in db.cohort_arcs(batch) if eligibility.is_due_for_week4_reminder(s["arc"]))
-    analysis = build_cohort_analysis(batch)
+    imp = build_impact(batch)
 
     return templates.TemplateResponse(request, "admin_dashboard.html", base_ctx(
         request, batch,
         n_pre=len(pre_all), n_sameday=len(sameday_all), n_week4=len(week4_all),
-        n_matched=analysis["impact"]["n"], n_due=n_due,
-        analysis=analysis,
+        n_matched=imp["n"], n_due=n_due,
+        quad_counts_pre=imp["quad_counts_pre"], quad_counts_w4=imp["quad_counts_w4"],
+        mean_control_shift=imp["mean_control_shift"],
+        field_svg=imp["field_svg"], bars_svg=imp["bars_svg"], slope_svg=imp["slope_svg"],
+    ))
+
+
+def _admin_n_due(batch):
+    dev_mode = db.get_dev_mode()
+    return sum(1 for s in db.cohort_arcs(batch)
+               if eligibility.is_due_for_week4_reminder(s["arc"], dev_mode=dev_mode))
+
+
+@app.get("/admin/outcome", response_class=HTMLResponse)
+def admin_outcome(request: Request, username: str = Depends(check_admin)):
+    """First-day tab: Pre -> Same-day movement, full analysis."""
+    batch = batch_from(request)
+    return templates.TemplateResponse(request, "admin_outcome.html", base_ctx(
+        request, batch, o=build_outcome(batch), n_due=_admin_n_due(batch),
+    ))
+
+
+@app.get("/admin/impact", response_class=HTMLResponse)
+def admin_impact(request: Request, username: str = Depends(check_admin)):
+    """Four-weeks tab: Pre -> Week-4 journey, quadrant migrations, full analysis."""
+    batch = batch_from(request)
+    return templates.TemplateResponse(request, "admin_impact.html", base_ctx(
+        request, batch, m=build_impact(batch), n_due=_admin_n_due(batch),
     ))
 
 
@@ -1044,7 +1137,6 @@ def admin_groups(request: Request, username: str = Depends(check_admin)):
 
     return templates.TemplateResponse(request, "admin_groups.html", base_ctx(
         request, batch, groups=groups, overall=overall, n_due=n_due,
-        analysis=build_cohort_analysis(batch),
         deleted=request.query_params.get("deleted"),
     ))
 

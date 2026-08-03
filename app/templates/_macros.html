@@ -175,6 +175,21 @@
 {%- endmacro %}
 
 
+{# The admin navigation tab bar, shared across every admin page so the tabs
+   stay identical everywhere. `active` is the current page's key. #}
+{% macro admin_tabs(active, batch, n_due=0) -%}
+<div class="tabs">
+  <a {% if active == 'results' %}class="on"{% endif %} href="/admin?batch={{ batch }}">Results</a>
+  <a {% if active == 'outcome' %}class="on"{% endif %} href="/admin/outcome?batch={{ batch }}">Outcome &middot; first day</a>
+  <a {% if active == 'impact' %}class="on"{% endif %} href="/admin/impact?batch={{ batch }}">Impact &middot; 4 weeks</a>
+  <a {% if active == 'student' %}class="on"{% endif %} href="/admin/student?batch={{ batch }}">Individual Analysis</a>
+  <a {% if active == 'groups' %}class="on"{% endif %} href="/admin/groups?batch={{ batch }}">Groups</a>
+  <a {% if active == 'reminders' %}class="on"{% endif %} href="/admin/reminders?batch={{ batch }}">Week-4 reminders{% if n_due %}<span class="badge">{{ n_due }} due</span>{% endif %}</a>
+  <a href="/admin/export.csv?batch={{ batch }}">Download CSV</a>
+</div>
+{%- endmacro %}
+
+
 {# One of the three stage cards, used on the landing page, the status page,
    and the "what's next" strip under every result. #}
 {% macro stage_card(s, batch, email="", index=1) -%}

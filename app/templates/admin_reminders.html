@@ -9,13 +9,8 @@
   <p class="standfirst">Each student's 4-week survey unlocks {{ unlock_days }} days after their own Pre submission and stays open {{ open_days }} days. Admin can also grant individual access or switch on Auto-Fill All Options to allow all students to access at once.</p>
 </header>
 
-<div class="tabs">
-  <a href="/admin?batch={{ batch }}">Results</a>
-  <a href="/admin/student?batch={{ batch }}">Individual Analysis</a>
-  <a href="/admin/groups?batch={{ batch }}">Groups</a>
-  <a class="on" href="/admin/reminders?batch={{ batch }}">Week-4 reminders{% if due %}<span class="badge">{{ due|length }} due</span>{% endif %}</a>
-  <a href="/admin/export.csv?batch={{ batch }}">Download CSV</a>
-</div>
+{% from "_macros.html" import admin_tabs with context %}
+{{ admin_tabs('reminders', batch, due|length) }}
 
 {% if sent is not none and sent != '' %}
   {% if sent|int > 0 %}<div class="ok-banner">Sent {{ sent }} reminder{{ '' if sent|int == 1 else 's' }}.{% if failed|int %} {{ failed }} failed &mdash; check the service log.{% endif %}</div>

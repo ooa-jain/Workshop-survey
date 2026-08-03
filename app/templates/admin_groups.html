@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% from "_analysis.html" import outcome_block, impact_block with context %}
+{% from "_macros.html" import admin_tabs with context %}
 {% block title %}Groups by date &middot; {{ app_name }}{% endblock %}
 {% block accent %}coral{% endblock %}
 {% block wrapclass %} wide{% endblock %}
@@ -10,13 +10,7 @@
   <p class="standfirst">Everyone who filled a survey is grouped by the day they submitted it. Each group shows how many did Pre, Same-day and Week&nbsp;4, how long they took, and can be deleted as a whole.</p>
 </header>
 
-<div class="tabs">
-  <a href="/admin?batch={{ batch }}">Results</a>
-  <a href="/admin/student?batch={{ batch }}">Individual Analysis</a>
-  <a class="on" href="/admin/groups?batch={{ batch }}">Groups</a>
-  <a href="/admin/reminders?batch={{ batch }}">Week-4 reminders{% if n_due %}<span class="badge">{{ n_due }} due</span>{% endif %}</a>
-  <a href="/admin/export.csv?batch={{ batch }}">Download CSV</a>
-</div>
+{{ admin_tabs('groups', batch, n_due) }}
 
 {% if deleted is not none and deleted != '' %}
   {% if deleted|int > 0 %}<div class="ok-banner">Deleted {{ deleted }} response{{ '' if deleted|int == 1 else 's' }} from that group.</div>
@@ -30,17 +24,6 @@
   <div><div class="lab">Total submissions</div><div class="val">{{ overall.total }}</div></div>
   <div><div class="lab">Avg time to fill</div><div class="val text">{{ overall.avg_time }}</div></div>
 </div>
-
-<h2 class="step-h" style="margin-top:34px">Outcome &mdash; end of the workshop day</h2>
-<p class="step-lede">All the same-day check-ins, straight after the workshop.</p>
-{{ outcome_block(analysis.outcome) }}
-
-<h2 class="step-h" style="margin-top:34px">Impact &mdash; four weeks on</h2>
-<p class="step-lede">Every matched student's arrow from Pre to Week&nbsp;4, with the detailed analysis.</p>
-{{ impact_block(analysis.impact) }}
-
-<h2 class="step-h" style="margin-top:34px">By the day they filled it</h2>
-<p class="step-lede">Every submission grouped by calendar day, with time-to-fill and a delete-the-day action.</p>
 
 {% if not groups %}
 <div class="card flat">

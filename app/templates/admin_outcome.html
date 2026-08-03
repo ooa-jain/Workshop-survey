@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+{% from "_macros.html" import admin_tabs with context %}
+{% block title %}Outcome &middot; first day &middot; {{ app_name }}{% endblock %}
+{% block accent %}tang{% endblock %}
+{% block wrapclass %} wide{% endblock %}
+{% block content %}
+<header class="masthead">
+  <div class="kicker">Admin &middot; {{ batch }}</div>
+  <h1>Outcome &middot; <em>first day</em></h1>
+  <p class="standfirst">How the cohort moved by the end of the workshop day &mdash; Pre &rarr; Same-day. The same-day check-in measures Job&nbsp;Intelligence only, so this is the immediate first-day shift in thinking.</p>
+</header>
+
+{{ admin_tabs('outcome', batch, n_due) }}
+
+{% if not o.has_data %}
+<div class="card flat">
+  <div class="tab"><span class="tab-n">!</span>No first-day pairs yet</div>
+  <p class="note" style="margin-bottom:0">This fills in once at least one student has submitted both a Pre and a Same-day survey. So far: {{ o.n_pre }} Pre, {{ o.n_sameday }} Same-day.</p>
+</div>
+{% else %}
+
+<!-- Who took it + which way they moved -->
+<div class="hero-stat">
+  <div><div class="lab">Took same-day (matched)</div><div class="val">{{ o.n }}</div></div>
+  <div><div class="lab">Rose</div><div class="val">{{ o.rose }}<small> of {{ o.n }}</small></div></div>
+  <div><div class="lab">Fell</div><div class="val">{{ o.fell }}</div></div>
+  <div><div class="lab">No change</div><div class="val">{{ o.same }}</div></div>
+</div>
+
+<div class="hero-stat">
+  <div><div class="lab">Job Intelligence (Pre)</div><div class="val">{{ o.ji_pre_mean }}</div></div>
+  <div><div class="lab">Job Intelligence (Same day)</div><div class="val">{{ o.ji_now_mean }}</div></div>
+  <div><div class="lab">Mean shift</div><div class="val">{% if o.ji_delta is not none %}{{ '+' if o.ji_delta > 0 else '' }}{{ o.ji_delta }}{% else %}&mdash;{% endif %}</div></div>
+  <div><div class="lab">Improved</div><div class="val">{% if o.pct_improved is not none %}{{ o.pct_improved }}%{% else %}&mdash;{% endif %}</div></div>
+</div>
+
+<div class="card" data-accent="tang">
+  <div class="tab"><span class="tab-n">01</span>How far the cohort rose &mdash; Pre &rarr; Same day</div>
+  <p class="note" style="margin-bottom:16px">Job Intelligence, 0&ndash;100. Each thin line is one student; the heavy line is the cohort mean.</p>
+  <div class="svgbox">{{ o.slope_svg | safe }}</div>
+</div>
+
+<div class="card" data-accent="aqua">
+  <div class="tab"><span class="tab-n">02</span>Which parts of the day landed</div>
+  <p class="note" style="margin-bottom:16px">Mean change per Job-Intelligence dimension, Pre &rarr; Same day, on the 0&ndash;3 scale.</p>
+  <div class="svgbox">{{ o.bars_svg | safe }}</div>
+</div>
+
+<div class="card" data-accent="violet">
+  <div class="tab"><span class="tab-n">03</span>Every student, biggest first-day gain first</div>
+  <div class="tbl-scroll">
+    <table class="tbl">
+      <thead><tr><th>Student</th><th class="num">Pre</th><th class="num">Same day</th><th class="num">Shift</th></tr></thead>
+      <tbody>
+        {% for r in o.rows %}
+        <tr>
+          <td class="who">{{ r.name }}<span>{{ r.email }}</span></td>
+          <td class="num">{{ r.ji_pre }}</td>
+          <td class="num">{{ r.ji_now }}</td>
+          <td class="num" style="color:{% if r.delta > 0 %}var(--teal,#0E8F96){% elif r.delta < 0 %}var(--warn){% else %}var(--muted){% endif %}">{{ '+' if r.delta > 0 else '' }}{{ r.delta }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
+{% endblock %}
