@@ -190,7 +190,9 @@
     <a class="btn" href="{{ s.path }}?batch={{ batch }}{% if email %}&amp;email={{ email }}{% endif %}">
       {% if s.stage == 'pre' %}Start{% else %}Open{% endif %} &rarr;</a>
   {% elif s.state == 'done' %}
-    <a class="btn btn-ghost" href="{{ s.path }}?batch={{ batch }}{% if email %}&amp;email={{ email }}{% endif %}">View results</a>
+    {# A finished survey can't be edited -- "View results" goes to the
+       student's home/status page where every result and their growth live. #}
+    <a class="btn btn-ghost" href="/status?batch={{ batch }}{% if email %}&amp;email={{ email }}{% endif %}">View results</a>
   {% else %}
     <button class="btn" type="button" disabled>{{ '~' ~ s.minutes ~ ' min' }}</button>
   {% endif %}

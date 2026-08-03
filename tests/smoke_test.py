@@ -72,15 +72,24 @@ check("Pre doc stored", doc is not None)
 check("Pre job_search scored", doc and doc["scores"]["job_search"]["total"] is not None)
 check("Pre job_intelligence scored", doc and doc["scores"]["job_intelligence"]["total"] is not None)
 
-# Check incorrect password for PRE resubmit
-pre_bad_pwd = PRE_PAYLOAD.copy()
-pre_bad_pwd["password"] = "wrong-password"
-r = client.post(f"/survey/pre?batch={BATCH}", data=pre_bad_pwd)
-check("POST resubmit pre with bad password fails", "Incorrect password." in r.text)
+# Pre is write-once: a resubmit attempt is refused and bounced to the
+# student's results page, and the stored answers are left untouched.
+pre_resubmit = PRE_PAYLOAD.copy()
+pre_resubmit["b1"] = "d"   # try to change an answer
+r = client.post(f"/survey/pre?batch={BATCH}", data=pre_resubmit)
+check("Pre resubmit is bounced to results (write-once)", "Look me up" in r.text)
+check("Pre resubmit did not overwrite answers",
+      db_module.get_response(EMAIL, "pre", BATCH)["raw_answers"]["b1"] == "a")
+# GET on the Pre form for a finished student also lands on results.
+r_get = client.get(f"/survey/pre?batch={BATCH}&email={EMAIL}")
+check("GET Pre for finished student shows results, not the form",
+      "Look me up" in r_get.text and "data-stepper" not in r_get.text)
 
 # The whole point of the change: same-day is visible the moment Pre lands.
 check("Pre result offers the same-day survey now", "/survey/post-sameday" in r_correct_pre.text)
 check("Pre result shows week-4 as locked", "Unlocks in" in r_correct_pre.text)
+# A finished Pre's "View results" points at the status/home page, not the form.
+check("Pre 'View results' links to the status page", "/status?batch=" in r_correct_pre.text)
 
 # ---- api/check reflects the gate ----
 j = client.get(f"/api/check?stage=post_sameday&batch={BATCH}&email={EMAIL}").json()
@@ -210,8 +219,17 @@ check("Status page shows submitted state", "Submitted" in r.text)
 # ---- admin ----
 r = client.get(f"/admin?batch={BATCH}", auth=auth)
 check("Admin dashboard -> 200", r.status_code == 200)
+check("Results page shows Outcome (first day)", "Outcome" in r.text)
+check("Results page shows Impact (week 4)", "Impact" in r.text and "where everyone moved" in r.text)
 r = client.get(f"/admin?batch={BATCH}")
 check("Admin requires auth", r.status_code == 401)
+
+# Groups page carries the same Outcome + Impact analysis.
+r = client.get(f"/admin/groups?batch={BATCH}", auth=auth)
+check("Admin groups -> 200", r.status_code == 200)
+check("Groups page shows Outcome analysis", "Outcome" in r.text)
+check("Groups page shows Impact analysis", "Impact" in r.text and "where everyone moved" in r.text)
+
 r = client.get(f"/admin/export.csv?batch={BATCH}", auth=auth)
 check("CSV export -> 200", r.status_code == 200 and "job_intelligence" in r.text)
 

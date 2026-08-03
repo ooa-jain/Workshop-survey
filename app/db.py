@@ -100,6 +100,24 @@ def all_responses(batch, stage=None):
     return list(responses_collection().find(q))
 
 
+def matched_sameday(batch):
+    """Students with both a 'pre' and a 'post_sameday' submission -- the set
+    the admin 'Outcome (first day)' analysis is built from, capturing how the
+    cohort moved by the end of the workshop day."""
+    pre = {d["email_norm"]: d for d in all_responses(batch, "pre")}
+    sameday = {d["email_norm"]: d for d in all_responses(batch, "post_sameday")}
+    out = []
+    for email_norm, pre_doc in pre.items():
+        if email_norm in sameday:
+            out.append({
+                "email": pre_doc["email"],
+                "name": pre_doc["name"],
+                "pre": pre_doc,
+                "sameday": sameday[email_norm],
+            })
+    return out
+
+
 def matched_students(batch):
     """Students with both a 'pre' and a 'post_week4' submission -- the set
     the cohort dashboard's quadrant field and slopegraph are built from."""

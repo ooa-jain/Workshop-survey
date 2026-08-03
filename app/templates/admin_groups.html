@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from "_analysis.html" import outcome_block, impact_block with context %}
 {% block title %}Groups by date &middot; {{ app_name }}{% endblock %}
 {% block accent %}coral{% endblock %}
 {% block wrapclass %} wide{% endblock %}
@@ -29,6 +30,17 @@
   <div><div class="lab">Total submissions</div><div class="val">{{ overall.total }}</div></div>
   <div><div class="lab">Avg time to fill</div><div class="val text">{{ overall.avg_time }}</div></div>
 </div>
+
+<h2 class="step-h" style="margin-top:34px">Outcome &mdash; end of the workshop day</h2>
+<p class="step-lede">All the same-day check-ins, straight after the workshop.</p>
+{{ outcome_block(analysis.outcome) }}
+
+<h2 class="step-h" style="margin-top:34px">Impact &mdash; four weeks on</h2>
+<p class="step-lede">Every matched student's arrow from Pre to Week&nbsp;4, with the detailed analysis.</p>
+{{ impact_block(analysis.impact) }}
+
+<h2 class="step-h" style="margin-top:34px">By the day they filled it</h2>
+<p class="step-lede">Every submission grouped by calendar day, with time-to-fill and a delete-the-day action.</p>
 
 {% if not groups %}
 <div class="card flat">
