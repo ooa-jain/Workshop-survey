@@ -178,11 +178,16 @@ def quadrant_svg(series, width=640, height=460):
 # aggregated data computed in main.py, not synthetic/random data.
 # ---------------------------------------------------------------------------
 
-def quadrant_field_svg(students, width=640, height=470):
+def quadrant_field_svg(students, width=640, height=470, end_label="week 4"):
     """
     students: list of {"job_search_pre","ji_pre","job_search_w4","ji_w4"}
     One faint arrow per student, a heavier arrow for the cohort mean.
     Arrows where JI fell are drawn in the warning colour.
+
+    end_label names the second point (default "week 4"). For the same-day
+    view, pass job_search_w4 == job_search_pre so each arrow is a purely
+    vertical Job-Intelligence move -- search behaviour cannot have changed
+    by the same afternoon -- and set end_label="same day".
     """
     x0, y0, pw, ph = 70, 30, 520, 360
 
@@ -229,7 +234,7 @@ def quadrant_field_svg(students, width=640, height=470):
         parts.append(f'<circle cx="{X(mx)}" cy="{Y(my)}" r="7" fill="{INK}"/>')
         parts.append(f'<circle cx="{X(mx2)}" cy="{Y(my2)}" r="8.5" fill="{LIME}" stroke="{INK}" stroke-width="2"/>')
         parts.append(f'<text x="{X(mx)+10}" y="{Y(my)+16}" style="{FONT};font-size:10px" fill="{MUTED}">cohort mean, pre</text>')
-        parts.append(f'<text x="{X(mx2)-30}" y="{Y(my2)-14}" style="{FONT};font-size:10px" fill="{MUTED}">week 4</text>')
+        parts.append(f'<text x="{X(mx2)-30}" y="{Y(my2)-14}" style="{FONT};font-size:10px" fill="{MUTED}">{_esc(end_label)}</text>')
 
     parts.append(f'<text x="{x0}" y="{height-8}" style="{FONT};font-size:10px" fill="{WARN}">'
                   f'red = moved backwards on Job Intelligence ({backwards} of {len(students)})</text>')
