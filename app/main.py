@@ -801,11 +801,17 @@ def build_outcome(batch):
     a Job-Intelligence movement story -- who rose, who fell, and by how much."""
     sd = db.matched_sameday(batch)
     rows = []
+    field_students = []
     for m in sd:
         ji_pre = m["pre"]["scores"]["job_intelligence"]["total"]
         ji_now = m["sameday"]["scores"]["job_intelligence"]["total"]
+        js_pre = m["pre"]["scores"]["job_search"]["total"]
         rows.append({"name": m["name"], "email": m["email"],
                      "ji_pre": ji_pre, "ji_now": ji_now, "delta": round(ji_now - ji_pre, 1)})
+        # Same-day carries no Job-Search score, so search is unchanged from Pre:
+        # each arrow is a purely vertical Job-Intelligence move.
+        field_students.append({"job_search_pre": js_pre, "ji_pre": ji_pre,
+                               "job_search_w4": js_pre, "ji_w4": ji_now})
     rows.sort(key=lambda r: r["delta"], reverse=True)
 
     deltas = [r["delta"] for r in rows]
@@ -826,6 +832,7 @@ def build_outcome(batch):
         "ji_delta": (round(ji_now_mean - ji_pre_mean, 1) if sd else None),
         "best": rows[0] if rows else None,
         "rows": rows,
+        "field_svg": charts_svg.quadrant_field_svg(field_students, end_label="same day") if sd else None,
         "bars_svg": charts_svg.diverging_bars_svg(dim_rows, span_label="pre → same day") if sd else None,
         "slope_svg": charts_svg.slopegraph_svg(
             [{"ji_pre": r["ji_pre"], "ji_w4": r["ji_now"]} for r in rows],

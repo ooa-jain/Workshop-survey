@@ -34,20 +34,26 @@
   <div><div class="lab">Improved</div><div class="val">{% if o.pct_improved is not none %}{{ o.pct_improved }}%{% else %}&mdash;{% endif %}</div></div>
 </div>
 
+<div class="card" data-accent="violet">
+  <div class="tab"><span class="tab-n">01</span>Where everyone moved</div>
+  <p class="note" style="margin-bottom:16px">One faint arrow per student who took Pre and Same-day, Pre &rarr; Same&nbsp;day. Same-day measures Job&nbsp;Intelligence only, so each arrow moves straight up (or down) &mdash; Job Search is unchanged from Pre. The heavy arrow is the cohort mean; red arrows moved backwards on Job Intelligence.</p>
+  <div class="svgbox">{{ o.field_svg | safe }}</div>
+</div>
+
 <div class="card" data-accent="tang">
-  <div class="tab"><span class="tab-n">01</span>How far the cohort rose &mdash; Pre &rarr; Same day</div>
+  <div class="tab"><span class="tab-n">02</span>How far the cohort rose &mdash; Pre &rarr; Same day</div>
   <p class="note" style="margin-bottom:16px">Job Intelligence, 0&ndash;100. Each thin line is one student; the heavy line is the cohort mean.</p>
   <div class="svgbox">{{ o.slope_svg | safe }}</div>
 </div>
 
 <div class="card" data-accent="aqua">
-  <div class="tab"><span class="tab-n">02</span>Which parts of the day landed</div>
+  <div class="tab"><span class="tab-n">03</span>Which parts of the day landed</div>
   <p class="note" style="margin-bottom:16px">Mean change per Job-Intelligence dimension, Pre &rarr; Same day, on the 0&ndash;3 scale.</p>
   <div class="svgbox">{{ o.bars_svg | safe }}</div>
 </div>
 
 <div class="card" data-accent="violet">
-  <div class="tab"><span class="tab-n">03</span>Every student, biggest first-day gain first</div>
+  <div class="tab"><span class="tab-n">04</span>Every student, biggest first-day gain first</div>
   <div class="tbl-scroll">
     <table class="tbl">
       <thead><tr><th>Student</th><th class="num">Pre</th><th class="num">Same day</th><th class="num">Shift</th></tr></thead>
