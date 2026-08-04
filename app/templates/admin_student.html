@@ -12,6 +12,11 @@
 {% from "_macros.html" import admin_tabs with context %}
 {{ admin_tabs('student', batch, n_due) }}
 
+{% if deleted is not none and deleted != '' %}
+  {% if deleted|int > 0 %}<div class="ok-banner">Deleted {{ deleted }} response{{ '' if deleted|int == 1 else 's' }} for that student.</div>
+  {% else %}<div class="error-banner">Nothing was deleted &mdash; that student had no responses.</div>{% endif %}
+{% endif %}
+
 <!-- Student Selector -->
 <div class="card flat" style="margin-bottom:24px;">
   <form method="get" action="/admin/student" style="display:flex; gap:12px; align-items:center; flex-wrap:wrap;">
@@ -70,8 +75,14 @@
     </div>
 
     <!-- Right column actions -->
-    <div style="text-align:right;">
+    <div style="text-align:right; display:flex; flex-direction:column; gap:8px; align-items:flex-end;">
       <a class="btn btn-ghost btn-sm" href="/admin/reminders?batch={{ batch }}" style="margin-top:4px;">Manage Reminders &rarr;</a>
+      <form method="post" action="/admin/student/delete" style="margin:0"
+            onsubmit="return confirm('Delete ALL responses for {{ student.name }} ({{ student.email }})? This removes their Pre, Same-day and Week-4 data and cannot be undone.');">
+        <input type="hidden" name="batch" value="{{ batch }}">
+        <input type="hidden" name="email" value="{{ student.email }}">
+        <button class="btn btn-ghost btn-sm" type="submit" style="border-color:var(--warn); color:var(--warn)">Delete student</button>
+      </form>
     </div>
   </div>
 </div>
