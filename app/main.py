@@ -1071,7 +1071,18 @@ def admin_student(request: Request, username: str = Depends(check_admin)):
         selected_email=selected_email,
         student=student_data,
         n_due=n_due,
+        deleted=request.query_params.get("deleted"),
     ))
+
+
+@app.post("/admin/student/delete")
+async def admin_student_delete(request: Request, username: str = Depends(check_admin)):
+    """Delete a single student's data (all stages) from this batch."""
+    form = await request.form()
+    batch = form.get("batch", settings.WORKSHOP_BATCH)
+    email = require(form, "email", "Email")
+    deleted = db.delete_student(email, batch)
+    return RedirectResponse(f"/admin/student?batch={batch}&deleted={deleted}", status_code=303)
 
 
 # ---------------------------------------------------------------------------

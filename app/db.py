@@ -86,6 +86,18 @@ def delete_responses_on_date(batch, date_str):
     return result.deleted_count
 
 
+def delete_student(email, batch):
+    """Delete every response for a single student in this batch -- their Pre,
+    Same-day and Week-4 documents all at once. Used by the admin Individual
+    Analysis page to remove one person's data. Returns the number of documents
+    removed."""
+    email_norm = email.strip().lower()
+    result = responses_collection().delete_many(
+        {"email_norm": email_norm, "batch": batch}
+    )
+    return result.deleted_count
+
+
 def get_student_arc(email, batch):
     """All stages submitted so far for one student, keyed by stage."""
     email_norm = email.strip().lower()

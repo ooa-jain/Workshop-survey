@@ -240,6 +240,22 @@ check("Impact tab requires auth", client.get(f"/admin/impact?batch={BATCH}").sta
 r = client.get(f"/admin/export.csv?batch={BATCH}", auth=auth)
 check("CSV export -> 200", r.status_code == 200 and "job_intelligence" in r.text)
 
+# Individual student page renders and offers a per-student delete action.
+r = client.get(f"/admin/student?batch={BATCH}&email={EMAIL}", auth=auth)
+check("Student tab -> 200", r.status_code == 200)
+check("Student tab offers Delete student", "/admin/student/delete" in r.text and "Delete student" in r.text)
+check("Student delete requires auth",
+      client.post("/admin/student/delete", data={"batch": BATCH, "email": EMAIL},
+                  follow_redirects=False).status_code == 401)
+
+# Deleting a single student removes all of their stages (Pre/Same-day/Week-4).
+before = len(db_module.get_student_arc(EMAIL, BATCH))
+r = client.post("/admin/student/delete", data={"batch": BATCH, "email": EMAIL},
+                auth=auth, follow_redirects=False)
+check("Student delete -> 303 redirect", r.status_code == 303)
+check("Student delete redirects with count", f"deleted={before}" in r.headers["location"])
+check("Student delete wipes every stage", len(db_module.get_student_arc(EMAIL, BATCH)) == 0)
+
 print()
 if failures:
     print(f"{len(failures)} FAILED:")
