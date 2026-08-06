@@ -255,8 +255,10 @@ def diverging_bars_svg(dim_rows, width=640, height=None, span_label="pre \u2192 
 
     parts = [f'<svg viewBox="0 0 {width} {height}" role="img" aria-label="Mean change per dimension">']
     parts.append(f'<line x1="{x0}" y1="14" x2="{x0}" y2="{height-30}" stroke="{INK}" stroke-width="1.5"/>')
-    parts.append(f'<text x="{x0-4}" y="{height-10}" text-anchor="start" style="{FONT};font-size:10px" fill="{MUTED}">0</text>')
-    parts.append(f'<text x="{x0}" y="{height-10}" text-anchor="start" style="{FONT};font-size:10px" fill="{MUTED}">'
+    # The zero tick sits just left of the axis and the caption on its own line
+    # below it -- drawn at the same x/y they overlapped into an unreadable blot.
+    parts.append(f'<text x="{x0-6}" y="{height-24}" text-anchor="end" style="{FONT};font-size:10px" fill="{MUTED}">0</text>')
+    parts.append(f'<text x="{x0}" y="{height-8}" text-anchor="start" style="{FONT};font-size:10px" fill="{MUTED}">'
                   f'Mean change per dimension, {_esc(span_label)} (0\u20133 scale)</text>')
 
     for i, r in enumerate(rows):

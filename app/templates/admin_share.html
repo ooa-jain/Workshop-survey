@@ -1,0 +1,131 @@
+{% extends "base.html" %}
+{% from "_macros.html" import admin_tabs with context %}
+{% block title %}Share analysis &middot; {{ app_name }}{% endblock %}
+{% block accent %}aqua{% endblock %}
+{% block wrapclass %} wide{% endblock %}
+{% block content %}
+<header class="masthead">
+  <div class="kicker">Admin &middot; {{ batch }}</div>
+  <h1>Share <em>analysis</em></h1>
+  <p class="standfirst">Publish one group's first-day results as a link anyone can open &mdash; no login. The page shows where the group started (Pre), where it reached by the end of the workshop day (Same-day), the movement chart, the per-dimension bars, and every student's shift. Email addresses are never shown.</p>
+</header>
+
+{{ admin_tabs('share', batch, n_due) }}
+
+{% if new %}
+{% set new_url = shares | selectattr('token', 'equalto', new) | map(attribute='url') | first %}
+<div class="ok-banner">
+  Link created. Copy it and send it to the group:
+  <div class="share-link" style="margin-top:10px">
+    <input type="text" class="share-url" value="{{ new_url }}" readonly onclick="this.select()">
+    <button class="btn btn-sm" type="button" data-copy=".share-url">Copy</button>
+    <a class="btn btn-ghost btn-sm" href="{{ new_url }}" target="_blank" rel="noopener">Open</a>
+  </div>
+</div>
+{% endif %}
+
+{% if revoked %}
+<div class="ok-banner">Link revoked &mdash; it no longer opens for anyone.</div>
+{% endif %}
+
+<!-- Create a new share -->
+<div class="card" data-accent="aqua">
+  <div class="tab"><span class="tab-n">01</span>Create a shareable link</div>
+  <form method="post" action="/admin/share/create">
+    <input type="hidden" name="batch" value="{{ batch }}">
+
+    <div class="q">
+      <label for="title">Title shown on the shared page</label>
+      <input type="text" id="title" name="title" required maxlength="120"
+             placeholder="e.g. B.Com Section A &mdash; workshop results">
+    </div>
+
+    <div class="q">
+      <label for="day">Group</label>
+      <select id="day" name="day">
+        <option value="">All groups &mdash; everyone in {{ batch }}</option>
+        {% for g in groups %}
+        <option value="{{ g.date }}">{{ g.label }} &mdash; {{ g.n_pre }} student{{ '' if g.n_pre == 1 else 's' }}</option>
+        {% endfor %}
+      </select>
+      <div class="q-hint">A group is everyone who filled their Pre survey on that day &mdash; the cohort that sat the workshop together.</div>
+    </div>
+
+    <div class="q">
+      <label for="note">Short note under the title <span style="font-weight:400;color:var(--muted)">(optional)</span></label>
+      <textarea id="note" name="note" rows="2" maxlength="400"
+                placeholder="e.g. 42 students, morning session, 6 August 2026."></textarea>
+    </div>
+
+    <div class="q">
+      <label class="opt" style="display:inline-flex">
+        <input type="checkbox" name="show_names" checked> Show student names in the individual table
+      </label>
+      <div class="q-hint">Untick to list people as Student 01, Student 02&hellip; instead. Email addresses are never published either way.</div>
+    </div>
+
+    <button class="btn" type="submit">Create link &rarr;</button>
+  </form>
+</div>
+
+<!-- Existing shares -->
+<div class="card" data-accent="violet">
+  <div class="tab"><span class="tab-n">02</span>Live links</div>
+  {% if not shares %}
+  <p class="note" style="margin-bottom:0">No links yet. Create one above and it appears here.</p>
+  {% else %}
+  <div class="tbl-scroll">
+    <table class="tbl">
+      <thead>
+        <tr><th>Title</th><th>Group</th><th>Link</th><th class="num">Views</th><th class="num">Created</th><th class="num"></th></tr>
+      </thead>
+      <tbody>
+        {% for s in shares %}
+        <tr>
+          <td class="who">{{ s.title }}<span>{{ 'names shown' if s.show_names else 'anonymised' }}</span></td>
+          <td>{{ s.group_label }}</td>
+          <td>
+            <div class="share-link">
+              <input type="text" class="share-url" value="{{ s.url }}" readonly onclick="this.select()">
+              <button class="btn btn-sm" type="button" data-copy=".share-url">Copy</button>
+              <a class="btn btn-ghost btn-sm" href="{{ s.url }}" target="_blank" rel="noopener">Open</a>
+            </div>
+          </td>
+          <td class="num">{{ s.views }}</td>
+          <td class="num">{{ s.created }}</td>
+          <td class="num">
+            <form method="post" action="/admin/share/delete" style="margin:0"
+                  onsubmit="return confirm('Revoke this link? Anyone holding it will stop being able to open the results.');">
+              <input type="hidden" name="batch" value="{{ batch }}">
+              <input type="hidden" name="token" value="{{ s.token }}">
+              <button class="btn btn-ghost btn-sm" type="submit" style="border-color:var(--warn); color:var(--warn)">Revoke</button>
+            </form>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Copy the URL sitting next to whichever Copy button was pressed.
+document.addEventListener("click", function (e) {
+  var btn = e.target.closest("[data-copy]");
+  if (!btn) return;
+  var input = btn.parentElement.querySelector(btn.getAttribute("data-copy"));
+  if (!input) return;
+  input.select();
+  var done = function () { btn.textContent = "Copied"; setTimeout(function () { btn.textContent = "Copy"; }, 1600); };
+  if (navigator.clipboard) {
+    navigator.clipboard.writeText(input.value).then(done, function () { document.execCommand("copy"); done(); });
+  } else {
+    document.execCommand("copy");
+    done();
+  }
+});
+</script>
+{% endblock %}

@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block title %}Link not found &middot; {{ app_name }}{% endblock %}
+{% block accent %}coral{% endblock %}
+{% block content %}
+<header class="masthead">
+  <div class="kicker">Shared analysis</div>
+  <h1>This link <em>isn't live</em></h1>
+</header>
+
+<div class="card flat">
+  <div class="tab"><span class="tab-n">!</span>Nothing to show</div>
+  <p class="note" style="margin-bottom:0">The link you followed has been revoked, or it was never valid. Ask whoever sent it to you for a current one.</p>
+</div>
+{% endblock %}

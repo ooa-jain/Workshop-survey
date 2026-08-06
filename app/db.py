@@ -31,6 +31,7 @@ def ensure_indexes():
         name="uniq_student_stage_batch",
     )
     coll.create_index([("batch", ASCENDING), ("stage", ASCENDING)], name="batch_stage")
+    shares_collection().create_index([("token", ASCENDING)], unique=True, name="uniq_share_token")
 
 
 def upsert_response(email, name, stage, batch, raw_answers, scores, password_hash=None, password_salt=None):
@@ -112,11 +113,40 @@ def all_responses(batch, stage=None):
     return list(responses_collection().find(q))
 
 
-def matched_sameday(batch):
+def day_of(doc):
+    """The calendar day (UTC, 'YYYY-MM-DD') a response was submitted on.
+    A workshop group is identified by the day its Pre surveys were filled."""
+    return doc["submitted_at"].strftime("%Y-%m-%d")
+
+
+def pre_groups(batch):
+    """Every day on which Pre surveys were submitted in this batch, newest
+    first, with a headcount. These are the workshop groups an admin can pick
+    from when sharing an analysis -- a group is everyone who filled their Pre
+    on that day, which is the cohort that sat the workshop together."""
+    counts = {}
+    for d in all_responses(batch, "pre"):
+        counts[day_of(d)] = counts.get(day_of(d), 0) + 1
+    return [
+        {
+            "date": day,
+            "label": datetime.strptime(day, "%Y-%m-%d").strftime("%d %b %Y"),
+            "n_pre": counts[day],
+        }
+        for day in sorted(counts, reverse=True)
+    ]
+
+
+def matched_sameday(batch, day=None):
     """Students with both a 'pre' and a 'post_sameday' submission -- the set
     the admin 'Outcome (first day)' analysis is built from, capturing how the
-    cohort moved by the end of the workshop day."""
-    pre = {d["email_norm"]: d for d in all_responses(batch, "pre")}
+    cohort moved by the end of the workshop day.
+
+    day: optional 'YYYY-MM-DD'. When given, only students whose Pre was
+    submitted on that day are included, so one workshop group can be analysed
+    (and shared) on its own."""
+    pre = {d["email_norm"]: d for d in all_responses(batch, "pre")
+           if day is None or day_of(d) == day}
     sameday = {d["email_norm"]: d for d in all_responses(batch, "post_sameday")}
     out = []
     for email_norm, pre_doc in pre.items():
@@ -181,6 +211,65 @@ def log_week4_reminder(email, batch, when=None):
         {"$set": {"week4_reminder_last": when}, "$inc": {"week4_reminder_count": 1}},
     )
     return when
+
+
+def stage_count(batch, stage, day=None):
+    """How many responses of one stage exist, optionally narrowed to a single
+    workshop group. Membership of a group is decided by the Pre response, so a
+    same-day count for a group means 'people from that group who also filled
+    the same-day survey', whenever they filled it."""
+    if day is None:
+        return len(all_responses(batch, stage))
+    if stage == "pre":
+        return sum(1 for d in all_responses(batch, "pre") if day_of(d) == day)
+    group = {d["email_norm"] for d in all_responses(batch, "pre") if day_of(d) == day}
+    return sum(1 for d in all_responses(batch, stage) if d["email_norm"] in group)
+
+
+# ---------------------------------------------------------------------------
+# Shared analyses -- read-only public links to a group's first-day results
+# ---------------------------------------------------------------------------
+
+def shares_collection():
+    return get_db()["shared_analyses"]
+
+
+def create_share(token, batch, day, title, note="", show_names=True):
+    """Store one shareable analysis. day=None shares the whole batch; a
+    'YYYY-MM-DD' day shares that one workshop group."""
+    doc = {
+        "token": token,
+        "batch": batch,
+        "day": day,
+        "title": title.strip(),
+        "note": (note or "").strip(),
+        "show_names": bool(show_names),
+        "created_at": datetime.now(timezone.utc),
+        "views": 0,
+    }
+    shares_collection().insert_one(doc)
+    return doc
+
+
+def get_share(token):
+    return shares_collection().find_one({"token": token})
+
+
+def list_shares(batch):
+    return list(shares_collection().find({"batch": batch}).sort("created_at", -1))
+
+
+def delete_share(token):
+    """Revoke a link. The analysis itself is untouched -- only the public
+    door to it closes, and the URL stops resolving immediately."""
+    return shares_collection().delete_one({"token": token}).deleted_count
+
+
+def record_share_view(token):
+    shares_collection().update_one(
+        {"token": token},
+        {"$inc": {"views": 1}, "$set": {"last_viewed_at": datetime.now(timezone.utc)}},
+    )
 
 
 def settings_collection():

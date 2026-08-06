@@ -56,11 +56,12 @@
   <div class="tab"><span class="tab-n">04</span>Every student, biggest first-day gain first</div>
   <div class="tbl-scroll">
     <table class="tbl">
-      <thead><tr><th>Student</th><th class="num">Pre</th><th class="num">Same day</th><th class="num">Shift</th></tr></thead>
+      <thead><tr><th>Student</th><th>From &rarr; to</th><th class="num">Pre</th><th class="num">Same day</th><th class="num">Shift</th></tr></thead>
       <tbody>
         {% for r in o.rows %}
         <tr>
           <td class="who">{{ r.name }}<span>{{ r.email }}</span></td>
+          <td{% if r.moved %} style="font-weight:600"{% endif %}>{{ r.quad_pre }} &rarr; {{ r.quad_now }}</td>
           <td class="num">{{ r.ji_pre }}</td>
           <td class="num">{{ r.ji_now }}</td>
           <td class="num" style="color:{% if r.delta > 0 %}var(--teal,#0E8F96){% elif r.delta < 0 %}var(--warn){% else %}var(--muted){% endif %}">{{ '+' if r.delta > 0 else '' }}{{ r.delta }}</td>
@@ -69,6 +70,12 @@
       </tbody>
     </table>
   </div>
+</div>
+
+<div class="card" data-accent="aqua">
+  <div class="tab"><span class="tab-n">05</span>Share this analysis</div>
+  <p class="note" style="margin-bottom:16px">Publish these results for one workshop group as a link anyone can open &mdash; your own title, no login, no email addresses. {{ o.n_moved_quad }} of {{ o.n }} student{{ '' if o.n == 1 else 's' }} changed quadrant on the first day.</p>
+  <a class="btn" href="/admin/share?batch={{ batch }}">Create a share link &rarr;</a>
 </div>
 {% endif %}
 {% endblock %}

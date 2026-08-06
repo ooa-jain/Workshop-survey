@@ -108,6 +108,7 @@ both scoped to one batch via the same `?batch=` query param.
 - "Where am I": `https://job-intelligence.juooa.cloud/status`
 - Admin (HTTP Basic Auth, credentials from `.env`):
   `https://job-intelligence.juooa.cloud/admin` and `/admin/reminders`
+- Shared analysis (no login, one per link): `.../s/<token>` — see below
 
 In practice you only ever hand out the Pre link. Every result page ends
 with the three-stage strip showing what's open next, and the week-4
@@ -117,6 +118,35 @@ Each submission immediately renders an on-screen result (the arrow-track
 dimension chart plus the quadrant position) and emails the same result as
 PNG charts embedded via Content-ID, so it displays correctly even in
 Outlook desktop rather than depending on inline SVG support.
+
+## Sharing a group's results (`/admin/share`)
+
+The **Share analysis** admin tab publishes one workshop group's first-day
+results as a link anyone can open without logging in — for showing a class
+its own numbers, or sending them to a department.
+
+Creating a link asks for three things: a **title** shown on the page, a
+**group**, and an optional note. A group is everyone whose *Pre* survey was
+submitted on a given day — the cohort that sat the workshop together — or
+"All groups" for the whole batch. Analysis is scoped to that group only;
+other days never appear.
+
+The published page shows, for that group: the Job-Intelligence mean before
+the workshop and at the same-day check-in, how many rose / fell / changed
+quadrant, the arrow field chart (every student's Pre → same-day move, plus
+the group mean), the trajectory lines, the per-dimension bar chart, the
+quadrant population before and after, and a per-student table with each
+person's from → to role and score shift.
+
+Two privacy properties hold regardless of settings: **email addresses are
+never rendered**, and the page carries `noindex`. Names in the per-student
+table are opt-out — untick "show student names" and people are listed as
+Student 01, Student 02… Links are unguessable tokens, and **Revoke** on the
+admin page kills one immediately (the underlying data is untouched). Each
+link shows its view count so you can tell whether it was actually opened.
+
+`BASE_URL` in `.env` is what the copyable link is built from — if it's wrong,
+the links you hand out point at the wrong host.
 
 ## Stage gating -- who can open what, when
 

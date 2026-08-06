@@ -184,6 +184,7 @@
   <a {% if active == 'impact' %}class="on"{% endif %} href="/admin/impact?batch={{ batch }}">Impact &middot; 4 weeks</a>
   <a {% if active == 'student' %}class="on"{% endif %} href="/admin/student?batch={{ batch }}">Individual Analysis</a>
   <a {% if active == 'groups' %}class="on"{% endif %} href="/admin/groups?batch={{ batch }}">Groups</a>
+  <a {% if active == 'share' %}class="on"{% endif %} href="/admin/share?batch={{ batch }}">Share analysis</a>
   <a {% if active == 'reminders' %}class="on"{% endif %} href="/admin/reminders?batch={{ batch }}">Week-4 reminders{% if n_due %}<span class="badge">{{ n_due }} due</span>{% endif %}</a>
   <a href="/admin/export.csv?batch={{ batch }}">Download CSV</a>
 </div>

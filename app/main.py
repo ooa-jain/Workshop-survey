@@ -795,19 +795,33 @@ def _mean_dim_rows(matched, first_key, second_key):
     return rows
 
 
-def build_outcome(batch):
+def build_outcome(batch, day=None):
     """'First day' view: how the cohort moved Pre -> Same-day, for every
     student who filled both. Same-day carries no Job-Search score, so this is
-    a Job-Intelligence movement story -- who rose, who fell, and by how much."""
-    sd = db.matched_sameday(batch)
+    a Job-Intelligence movement story -- who rose, who fell, and by how much.
+
+    day: optional 'YYYY-MM-DD' restricting the analysis to the workshop group
+    that filled its Pre survey on that day. None covers the whole batch."""
+    sd = db.matched_sameday(batch, day=day)
     rows = []
     field_students = []
+    quad_counts_pre = {q: 0 for q in QUADRANTS}
+    quad_counts_now = {q: 0 for q in QUADRANTS}
     for m in sd:
         ji_pre = m["pre"]["scores"]["job_intelligence"]["total"]
         ji_now = m["sameday"]["scores"]["job_intelligence"]["total"]
         js_pre = m["pre"]["scores"]["job_search"]["total"]
+        # Same-day asks only the Job-Intelligence items, so job search is held
+        # at its Pre value -- the same assumption the quadrant field chart
+        # makes. That lets the same-day role be named on the same grid.
+        q_pre = scoring.quadrant(js_pre, ji_pre)
+        q_now = scoring.quadrant(js_pre, ji_now)
+        quad_counts_pre[q_pre] += 1
+        quad_counts_now[q_now] += 1
         rows.append({"name": m["name"], "email": m["email"],
-                     "ji_pre": ji_pre, "ji_now": ji_now, "delta": round(ji_now - ji_pre, 1)})
+                     "ji_pre": ji_pre, "ji_now": ji_now, "delta": round(ji_now - ji_pre, 1),
+                     "js_pre": js_pre,
+                     "quad_pre": q_pre, "quad_now": q_now, "moved": q_pre != q_now})
         # Same-day carries no Job-Search score, so search is unchanged from Pre:
         # each arrow is a purely vertical Job-Intelligence move.
         field_students.append({"job_search_pre": js_pre, "ji_pre": ji_pre,
@@ -823,8 +837,14 @@ def build_outcome(batch):
     return {
         "has_data": bool(sd),
         "n": len(sd),
-        "n_pre": len(db.all_responses(batch, "pre")),
-        "n_sameday": len(db.all_responses(batch, "post_sameday")),
+        "day": day,
+        "n_pre": db.stage_count(batch, "pre", day=day),
+        "n_sameday": db.stage_count(batch, "post_sameday", day=day),
+        "quadrants": QUADRANTS,
+        "quad_counts_pre": quad_counts_pre,
+        "quad_counts_now": quad_counts_now,
+        "n_moved_quad": sum(1 for r in rows if r["moved"]),
+        "js_pre_mean": _avg([r["js_pre"] for r in rows]),
         "rose": dirs["rose"], "fell": dirs["fell"], "same": dirs["same"],
         "pct_improved": (round(dirs["rose"] / len(sd) * 100) if sd else None),
         "ji_pre_mean": ji_pre_mean,
@@ -1166,6 +1186,110 @@ async def admin_groups_delete(request: Request, username: str = Depends(check_ad
     date = require(form, "date", "Date")
     deleted = db.delete_responses_on_date(batch, date)
     return RedirectResponse(f"/admin/groups?batch={batch}&deleted={deleted}", status_code=303)
+
+
+# ---------------------------------------------------------------------------
+# ADMIN -- SHARE AN ANALYSIS
+#
+# A share is a read-only public window onto one group's first-day results:
+# where the group started (Pre), where it finished by the end of the workshop
+# day (Same-day), and every arrow in between. It carries a title the admin
+# writes, and it never exposes email addresses -- names are optional too.
+# ---------------------------------------------------------------------------
+
+def _share_url(token):
+    return f"{settings.BASE_URL.rstrip('/')}/s/{token}"
+
+
+def _group_label(day):
+    """Human name for the group a share covers."""
+    if not day:
+        return "All groups"
+    return datetime.strptime(day, "%Y-%m-%d").strftime("%d %b %Y")
+
+
+def _decorate_share(s):
+    return {
+        "token": s["token"],
+        "title": s["title"],
+        "note": s.get("note", ""),
+        "day": s.get("day"),
+        "group_label": _group_label(s.get("day")),
+        "show_names": s.get("show_names", True),
+        "views": s.get("views", 0),
+        "url": _share_url(s["token"]),
+        "created": s["created_at"].strftime("%d %b %Y, %H:%M"),
+    }
+
+
+@app.get("/admin/share", response_class=HTMLResponse)
+def admin_share(request: Request, username: str = Depends(check_admin)):
+    """Create and manage public links to a group's first-day analysis."""
+    batch = batch_from(request)
+    return templates.TemplateResponse(request, "admin_share.html", base_ctx(
+        request, batch,
+        groups=db.pre_groups(batch),
+        shares=[_decorate_share(s) for s in db.list_shares(batch)],
+        new=request.query_params.get("new"),
+        revoked=request.query_params.get("revoked"),
+        n_due=_admin_n_due(batch),
+    ))
+
+
+@app.post("/admin/share/create")
+async def admin_share_create(request: Request, username: str = Depends(check_admin)):
+    form = await request.form()
+    batch = form.get("batch", settings.WORKSHOP_BATCH)
+    title = require(form, "title", "Title")
+    day = form.get("day") or None          # empty select value = whole batch
+    token = secrets.token_urlsafe(9)
+    db.create_share(token, batch, day, title,
+                    note=form.get("note", ""),
+                    show_names=form.get("show_names") == "on")
+    return RedirectResponse(f"/admin/share?batch={batch}&new={token}", status_code=303)
+
+
+@app.post("/admin/share/delete")
+async def admin_share_delete(request: Request, username: str = Depends(check_admin)):
+    form = await request.form()
+    batch = form.get("batch", settings.WORKSHOP_BATCH)
+    token = require(form, "token", "Share token")
+    db.delete_share(token)
+    return RedirectResponse(f"/admin/share?batch={batch}&revoked=1", status_code=303)
+
+
+@app.get("/s/{token}", response_class=HTMLResponse)
+def shared_analysis(request: Request, token: str):
+    """The public page. No login: anyone holding the link sees this group's
+    results, and nothing else -- no other group, no admin controls, no email
+    addresses."""
+    share = db.get_share(token)
+    if not share:
+        return templates.TemplateResponse(
+            request, "share_missing.html",
+            base_ctx(request, settings.WORKSHOP_BATCH), status_code=404,
+        )
+    db.record_share_view(token)
+
+    o = build_outcome(share["batch"], day=share.get("day"))
+    show_names = share.get("show_names", True)
+    # Rebuild the per-student rows without email addresses -- and without
+    # names as well, unless the admin ticked the box. Rows are already sorted
+    # biggest gain first, so the numbering reads as a leaderboard.
+    people = [
+        {
+            "who": r["name"] if show_names else f"Student {i:02d}",
+            "ji_pre": r["ji_pre"], "ji_now": r["ji_now"], "delta": r["delta"],
+            "quad_pre": r["quad_pre"], "quad_now": r["quad_now"], "moved": r["moved"],
+        }
+        for i, r in enumerate(o["rows"], start=1)
+    ]
+
+    return templates.TemplateResponse(request, "shared_analysis.html", base_ctx(
+        request, share["batch"], o=o, people=people,
+        share_title=share["title"], share_note=share.get("note", ""),
+        group_label=_group_label(share.get("day")),
+    ))
 
 
 # ---------------------------------------------------------------------------
