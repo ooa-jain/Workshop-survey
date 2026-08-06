@@ -135,8 +135,8 @@ def quadrant_svg(series, width=640, height=460):
     parts.append(f'<text x="{x0+pw/2+16}" y="{y0+22}" style="{FONT};font-size:11px;font-weight:600" fill="{INK}">BUSY STRATEGIST</text>')
     parts.append(f'<text x="{x0+16}" y="{y0+ph-10}" style="{FONT};font-size:11px;font-weight:600" fill="{INK}">DRIFTING</text>')
     parts.append(f'<text x="{x0+pw/2+16}" y="{y0+ph-10}" style="{FONT};font-size:11px;font-weight:600" fill="{INK}">VOLUME APPLICANT</text>')
-    parts.append(f'<text x="{x0}" y="{y0+ph+44}" style="{FONT};font-size:10px;letter-spacing:.1em;text-transform:uppercase" fill="{MUTED}">Job Intelligence (untargeted) \u2192</text>')
-    parts.append(f'<text transform="rotate(-90 26 {y0+ph/2})" x="26" y="{y0+ph/2}" style="{FONT};font-size:10px;letter-spacing:.1em;text-transform:uppercase" fill="{MUTED}">Job Search (untargeted) \u2192</text>')
+    parts.append(f'<text x="{x0}" y="{y0+ph+44}" style="{FONT};font-size:10px;letter-spacing:.1em;text-transform:uppercase" fill="{MUTED}">Job Search (untargeted) \u2192</text>')
+    parts.append(f'<text transform="rotate(-90 26 {y0+ph/2})" x="26" y="{y0+ph/2}" text-anchor="middle" style="{FONT};font-size:10px;letter-spacing:.1em;text-transform:uppercase" fill="{MUTED}">Job Intelligence (targeted) \u2192</text>')
 
     known = [p for p in series if p.get("job_search") is not None]
     marker_id = "ahq"
@@ -204,7 +204,8 @@ def quadrant_field_svg(students, width=640, height=470, end_label="week 4"):
     parts.append(f'<text x="{x0+pw/2+16}" y="{y0+22}" style="{FONT};font-size:11px;font-weight:600" fill="{INK}">BUSY STRATEGIST</text>')
     parts.append(f'<text x="{x0+16}" y="{y0+ph-10}" style="{FONT};font-size:11px;font-weight:600" fill="{INK}">DRIFTING</text>')
     parts.append(f'<text x="{x0+pw/2+16}" y="{y0+ph-10}" style="{FONT};font-size:11px;font-weight:600" fill="{INK}">VOLUME APPLICANT</text>')
-    parts.append(f'<text x="{x0}" y="{y0+ph+44}" style="{FONT};font-size:10px;letter-spacing:.1em;text-transform:uppercase" fill="{MUTED}">Job Intelligence (untargeted) \u2192</text>')
+    parts.append(f'<text x="{x0}" y="{y0+ph+44}" style="{FONT};font-size:10px;letter-spacing:.1em;text-transform:uppercase" fill="{MUTED}">Job Search (untargeted) \u2192</text>')
+    parts.append(f'<text transform="rotate(-90 26 {y0+ph/2})" x="26" y="{y0+ph/2}" text-anchor="middle" style="{FONT};font-size:10px;letter-spacing:.1em;text-transform:uppercase" fill="{MUTED}">Job Intelligence (targeted) \u2192</text>')
 
     parts.append(f'''<defs>
         <marker id="ahf" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse">

@@ -93,7 +93,7 @@ def quadrant_png(series):
     ax.text(2, 3, "DRIFTING", fontsize=8.5, color=INK, fontweight="bold", family="monospace")
     ax.text(52, 3, "VOLUME APPLICANT", fontsize=8.5, color=INK, fontweight="bold", family="monospace")
     ax.set_xlabel("Job Search (untargeted)  \u2192", fontsize=9, family="monospace", color=MUTED)
-    ax.set_ylabel("Job Intelligence  \u2192", fontsize=9, family="monospace", color=MUTED)
+    ax.set_ylabel("Job Intelligence (targeted)  \u2192", fontsize=9, family="monospace", color=MUTED)
     ax.set_xticks([]); ax.set_yticks([])
     for spine in ax.spines.values():
         spine.set_color("#D8CEBC")
