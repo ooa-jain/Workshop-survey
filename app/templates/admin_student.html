@@ -29,7 +29,7 @@
         {% for s in students %}
           <option value="{{ s.email }}" {% if selected_email == s.email %}selected{% endif %}>
             {{ s.name }} ({{ s.email }}) &mdash; 
-            {% if s.has_week4 %}Pre + Same-Day + Week 4{% elif s.has_sameday %}Pre + Same-Day{% else %}Pre only{% endif %}
+            {% if s.has_week4 %}Pre + Same-Day + Post Survey 2{% elif s.has_sameday %}Pre + Same-Day{% else %}Pre only{% endif %}
           </option>
         {% endfor %}
       {% endif %}
@@ -67,9 +67,9 @@
         {% endif %}
 
         {% if student.week4 %}
-          <span class="badge" style="background:#06b6d4; color:#fff;">Week-4 Submitted: {{ student.week4.submitted_at.strftime('%d %b %Y, %H:%M') }} &middot; took {{ student.week4_time }}</span>
+          <span class="badge" style="background:#06b6d4; color:#fff;">Post Survey 2 Submitted: {{ student.week4.submitted_at.strftime('%d %b %Y, %H:%M') }} &middot; took {{ student.week4_time }}</span>
         {% else %}
-          <span class="badge" style="background:var(--muted); color:#fff;">Week-4 Pending</span>
+          <span class="badge" style="background:var(--muted); color:#fff;">Post Survey 2 Pending</span>
         {% endif %}
       </div>
     </div>
@@ -78,7 +78,7 @@
     <div style="text-align:right; display:flex; flex-direction:column; gap:8px; align-items:flex-end;">
       <a class="btn btn-ghost btn-sm" href="/admin/reminders?batch={{ batch }}" style="margin-top:4px;">Manage Reminders &rarr;</a>
       <form method="post" action="/admin/student/delete" style="margin:0"
-            onsubmit="return confirm('Delete ALL responses for {{ student.name }} ({{ student.email }})? This removes their Pre, Same-day and Week-4 data and cannot be undone.');">
+            onsubmit="return confirm('Delete ALL responses for {{ student.name }} ({{ student.email }})? This removes their Pre, Post Survey 1 and Post Survey 2 data and cannot be undone.');">
         <input type="hidden" name="batch" value="{{ batch }}">
         <input type="hidden" name="email" value="{{ student.email }}">
         <button class="btn btn-ghost btn-sm" type="submit" style="border-color:var(--warn); color:var(--warn)">Delete student</button>

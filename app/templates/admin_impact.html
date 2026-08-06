@@ -1,13 +1,13 @@
 {% extends "base.html" %}
 {% from "_macros.html" import admin_tabs with context %}
-{% block title %}Impact &middot; 4 weeks &middot; {{ app_name }}{% endblock %}
+{% block title %}Impact &middot; Post Survey 2 &middot; {{ app_name }}{% endblock %}
 {% block accent %}violet{% endblock %}
 {% block wrapclass %} wide{% endblock %}
 {% block content %}
 <header class="masthead">
   <div class="kicker">Admin &middot; {{ batch }}</div>
-  <h1>Impact &middot; <em>4 weeks</em></h1>
-  <p class="standfirst">The full journey from the first day to four weeks on &mdash; Pre &rarr; Week&nbsp;4. Who moved, by how much, how many changed role (quadrant), and whether the shift is believable.</p>
+  <h1>Impact &middot; <em>Post Survey 2</em></h1>
+  <p class="standfirst">The full journey from the first day to four weeks on &mdash; Pre &rarr; Post Survey 2. Who moved, by how much, how many changed role (quadrant), and whether the shift is believable.</p>
 </header>
 
 {{ admin_tabs('impact', batch, n_due) }}
@@ -15,38 +15,38 @@
 {% if not m.has_data %}
 <div class="card flat">
   <div class="tab"><span class="tab-n">!</span>No matched students yet</div>
-  <p class="note" style="margin-bottom:0">This fills in once at least one student has submitted both a Pre and a Week-4 survey. So far: {{ m.n_pre }} Pre, {{ m.n_week4 }} Week&nbsp;4.</p>
+  <p class="note" style="margin-bottom:0">This fills in once at least one student has submitted both a Pre and a Post Survey 2 survey. So far: {{ m.n_pre }} Pre, {{ m.n_week4 }} Post Survey 2.</p>
 </div>
 {% else %}
 
 <!-- Headline KPIs -->
 <div class="hero-stat">
-  <div><div class="lab">Matched (Pre + Week 4)</div><div class="val">{{ m.n }}</div></div>
+  <div><div class="lab">Matched (Pre + Post Survey 2)</div><div class="val">{{ m.n }}</div></div>
   <div><div class="lab">Job Intelligence rose</div><div class="val">{{ m.ji.rose }}<small> of {{ m.n }}</small></div></div>
   <div><div class="lab">Job Intelligence fell</div><div class="val">{{ m.ji.fell }}</div></div>
   <div><div class="lab">Changed role (quadrant)</div><div class="val">{{ m.n_moved_quad }}<small> of {{ m.n }}</small></div></div>
 </div>
 
 <div class="hero-stat">
-  <div><div class="lab">Job Intelligence, Pre &rarr; Week 4</div><div class="val">{{ m.ji.pre_mean }} &rarr; {{ m.ji.w4_mean }}<small> ({{ '+' if m.ji.delta and m.ji.delta > 0 else '' }}{{ m.ji.delta }})</small></div></div>
-  <div><div class="lab">Job Search, Pre &rarr; Week 4</div><div class="val">{{ m.js.pre_mean }} &rarr; {{ m.js.w4_mean }}<small> ({{ '+' if m.js.delta and m.js.delta > 0 else '' }}{{ m.js.delta }})</small></div></div>
+  <div><div class="lab">Job Intelligence, Pre &rarr; Post Survey 2</div><div class="val">{{ m.ji.pre_mean }} &rarr; {{ m.ji.w4_mean }}<small> ({{ '+' if m.ji.delta and m.ji.delta > 0 else '' }}{{ m.ji.delta }})</small></div></div>
+  <div><div class="lab">Job Search, Pre &rarr; Post Survey 2</div><div class="val">{{ m.js.pre_mean }} &rarr; {{ m.js.w4_mean }}<small> ({{ '+' if m.js.delta and m.js.delta > 0 else '' }}{{ m.js.delta }})</small></div></div>
   <div><div class="lab">Job Search rose / fell</div><div class="val">{{ m.js.rose }} / {{ m.js.fell }}</div></div>
   <div><div class="lab">Stayed same role</div><div class="val">{{ m.n_same_quad }}</div></div>
 </div>
 
 <div class="card" data-accent="violet">
   <div class="tab"><span class="tab-n">01</span>Where everyone moved</div>
-  <p class="note" style="margin-bottom:16px">One faint arrow per matched student, Pre &rarr; Week&nbsp;4. The heavy arrow is the cohort mean; red arrows moved backwards on Job Intelligence.</p>
+  <p class="note" style="margin-bottom:16px">One faint arrow per matched student, Pre &rarr; Post Survey 2. The heavy arrow is the cohort mean; red arrows moved backwards on Job Intelligence.</p>
   <div class="svgbox">{{ m.field_svg | safe }}</div>
 </div>
 
 <div class="card" data-accent="coral">
   <div class="tab"><span class="tab-n">02</span>Role changes &mdash; who moved where</div>
-  <p class="note" style="margin-bottom:16px">Each row is the quadrant a student started in (Pre), each column where they ended (Week&nbsp;4). The diagonal (faded) is students who stayed put; everything off it is a role change.</p>
+  <p class="note" style="margin-bottom:16px">Each row is the quadrant a student started in (Pre), each column where they ended (Post Survey 2). The diagonal (faded) is students who stayed put; everything off it is a role change.</p>
   <div class="tbl-scroll">
     <table class="tbl">
       <thead>
-        <tr><th>Pre &darr; &nbsp;/&nbsp; Week 4 &rarr;</th>
+        <tr><th>Pre &darr; &nbsp;/&nbsp; Post Survey 2 &rarr;</th>
           {% for q in m.quadrants %}<th class="num">{{ q }}</th>{% endfor %}
           <th class="num">Started</th></tr>
       </thead>
@@ -78,10 +78,10 @@
 </div>
 
 <div class="card" data-accent="coral">
-  <div class="tab"><span class="tab-n">03</span>Quadrant population &mdash; Pre vs Week 4</div>
+  <div class="tab"><span class="tab-n">03</span>Quadrant population &mdash; Pre vs Post Survey 2</div>
   <div class="tbl-scroll">
     <table class="tbl">
-      <thead><tr><th>Quadrant</th><th class="num">Pre</th><th class="num">Week 4</th><th class="num">Change</th></tr></thead>
+      <thead><tr><th>Quadrant</th><th class="num">Pre</th><th class="num">Post Survey 2</th><th class="num">Change</th></tr></thead>
       <tbody>
         {% for q in m.quadrants %}
         {% set delta = m.quad_counts_w4[q] - m.quad_counts_pre[q] %}
@@ -99,19 +99,19 @@
 
 <div class="card" data-accent="aqua">
   <div class="tab"><span class="tab-n">04</span>Which parts of the day landed</div>
-  <p class="note" style="margin-bottom:16px">Mean change per Job-Intelligence dimension, Pre &rarr; Week&nbsp;4, on the 0&ndash;3 scale.</p>
+  <p class="note" style="margin-bottom:16px">Mean change per Job-Intelligence dimension, Pre &rarr; Post Survey 2, on the 0&ndash;3 scale.</p>
   <div class="svgbox">{{ m.bars_svg | safe }}</div>
 </div>
 
 <div class="card" data-accent="tang">
   <div class="tab"><span class="tab-n">05</span>Job Intelligence over time</div>
-  <p class="note" style="margin-bottom:16px">{% if m.has_sameday %}Pre &rarr; Same day &rarr; Week&nbsp;4.{% else %}Pre &rarr; Week&nbsp;4.{% endif %} Each thin line is one student; the heavy line is the cohort mean.</p>
+  <p class="note" style="margin-bottom:16px">{% if m.has_sameday %}Pre &rarr; Post Survey 1 &rarr; Post Survey 2.{% else %}Pre &rarr; Post Survey 2.{% endif %} Each thin line is one student; the heavy line is the cohort mean.</p>
   <div class="svgbox">{{ m.slope_svg | safe }}</div>
 </div>
 
 <div class="card" data-accent="violet">
   <div class="tab"><span class="tab-n">06</span>Is the shift believable?</div>
-  <p class="note" style="margin-bottom:0">Mean absolute shift on control items C1&ndash;C3, Pre &rarr; Week 4: <b>{{ m.mean_control_shift }}</b>
+  <p class="note" style="margin-bottom:0">Mean absolute shift on control items C1&ndash;C3, Pre &rarr; Post Survey 2: <b>{{ m.mean_control_shift }}</b>
     {% if m.mean_control_shift < 0.3 %}&mdash; below the 0.3 threshold, so the Job Intelligence movement looks credible.
     {% elif m.mean_control_shift <= 0.5 %}&mdash; in the 0.3&ndash;0.5 caveat range. Note this when presenting.
     {% else %}&mdash; above 0.5. Treat the Job Intelligence gain with real caution; this may be blanket agreement rather than genuine movement.
@@ -124,7 +124,7 @@
   <div class="tbl-scroll">
     <table class="tbl">
       <thead><tr>
-        <th>Student</th><th class="num">Role (Pre &rarr; Week 4)</th>
+        <th>Student</th><th class="num">Role (Pre &rarr; Post Survey 2)</th>
         <th class="num">JI Pre &rarr; W4</th><th class="num">JI &Delta;</th>
         <th class="num">Job Search &Delta;</th></tr></thead>
       <tbody>

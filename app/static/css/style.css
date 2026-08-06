@@ -455,6 +455,35 @@ textarea{resize:vertical;min-height:78px}
   body{background:#fff}
 }
 
+/* Report pages (.wrap.report) are meant to be saved as PDF from the browser's
+   print dialog, so they need more than the survey's print rules: the dark stat
+   tiles and section chips must keep their ink (browsers drop backgrounds by
+   default), cards must not be sliced across a page break, and the horizontal
+   scrollers have to open up so nothing is cropped out of the PDF. */
+@media print{
+  @page{margin:12mm}
+  .no-print{display:none!important}
+  .report .foot{display:flex!important}
+  .wrap.report{max-width:none;padding:0}
+  .report .card,.report .hero-stat>div,.report .svgbox,.report .tbl-scroll{
+    break-inside:avoid;page-break-inside:avoid;
+  }
+  .report .card{box-shadow:none;border:1px solid #cfc7b8}
+  .report .hero-stat>div,.report .tab,.report .kicker{
+    -webkit-print-color-adjust:exact;print-color-adjust:exact;
+  }
+  .report .tbl-scroll{overflow:visible!important}
+  .report .tbl{font-size:12px}
+  .report .masthead{padding-top:0}
+  /* Density: on paper the stat tiles fit four-up, and reining the charts in a
+     little stops each one claiming a page of its own. */
+  .report .hero-stat{grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px}
+  .report .hero-stat>div{padding:14px}
+  .report .hero-stat .val{font-size:26px}
+  .report .svgbox{max-width:148mm;margin-left:auto;margin-right:auto}
+  .report .card{margin-bottom:14px}
+}
+
 /* --- step headings (added with the stepper) -------------------------------- */
 .step-h{
   font-family:var(--display);font-weight:800;font-size:clamp(22px,4.4vw,28px);

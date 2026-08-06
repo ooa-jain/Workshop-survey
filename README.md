@@ -1,7 +1,7 @@
 # Job Search → Job Intelligence — survey app
 
 FastAPI + MongoDB Atlas app implementing the three-point survey instrument
-(Pre / Same-day / 4-week). Matches the stack pattern used across the other
+(Pre / Post Survey 1 / Post Survey 2). Matches the stack pattern used across the other
 juooa.cloud apps: Gunicorn (Uvicorn workers) + Nginx + systemd + Certbot,
 MongoDB Atlas for storage.
 
@@ -103,15 +103,15 @@ both scoped to one batch via the same `?batch=` query param.
 
 - Landing (all three, with live lock state): `https://job-intelligence.juooa.cloud/`
 - Pre: `https://job-intelligence.juooa.cloud/survey/pre`
-- Same-day: `https://job-intelligence.juooa.cloud/survey/post-sameday`
-- 4-week: `https://job-intelligence.juooa.cloud/survey/post-week4`
+- Post Survey 1: `https://job-intelligence.juooa.cloud/survey/post-sameday`
+- Post Survey 2: `https://job-intelligence.juooa.cloud/survey/post-week4`
 - "Where am I": `https://job-intelligence.juooa.cloud/status`
 - Admin (HTTP Basic Auth, credentials from `.env`):
   `https://job-intelligence.juooa.cloud/admin` and `/admin/reminders`
 - Shared analysis (no login, one per link): `.../s/<token>` — see below
 
 In practice you only ever hand out the Pre link. Every result page ends
-with the three-stage strip showing what's open next, and the week-4
+with the three-stage strip showing what's open next, and the Post Survey 2
 reminder mail carries its own signed link.
 
 Each submission immediately renders an on-screen result (the arrow-track
@@ -131,9 +131,9 @@ submitted on a given day — the cohort that sat the workshop together — or
 "All groups" for the whole batch. Analysis is scoped to that group only;
 other days never appear.
 
-The published page shows, for that group: the Job-Intelligence mean before
-the workshop and at the same-day check-in, how many rose / fell / changed
-quadrant, the arrow field chart (every student's Pre → same-day move, plus
+The published page shows, for that group: the Job-Intelligence mean at Pre
+and at Post Survey 1, how many rose / fell / changed
+quadrant, the arrow field chart (every student's Pre → Post Survey 1 move, plus
 the group mean), the trajectory lines, the per-dimension bar chart, the
 quadrant population before and after, and a per-student table with each
 person's from → to role and score shift.
@@ -145,8 +145,23 @@ Student 01, Student 02… Links are unguessable tokens, and **Revoke** on the
 admin page kills one immediately (the underlying data is untouched). Each
 link shows its view count so you can tell whether it was actually opened.
 
+**Download as PDF** on the shared page opens the browser's print dialog with
+a print stylesheet applied — dark stat tiles keep their ink, cards are never
+sliced across a page break, and the file is named after the share title. It is
+the browser's own PDF writer, not a server-side render, so no extra system
+dependency is needed on the VPS.
+
 `BASE_URL` in `.env` is what the copyable link is built from — if it's wrong,
 the links you hand out point at the wrong host.
+
+### Survey names
+
+The three stages are shown to students and admins as **Pre**, **Post Survey 1**
+(end of the workshop day) and **Post Survey 2** (four weeks on). Those are
+display labels only — the stored stage keys are still `pre`, `post_sameday`
+and `post_week4`, and the URLs are still `/survey/post-sameday` and
+`/survey/post-week4`, so existing data and any links already sent out keep
+working. Renaming the labels again means touching templates, not the DB.
 
 ## Stage gating -- who can open what, when
 
@@ -161,11 +176,11 @@ submit early.
 | Stage | Opens | Closes | Env var |
 |---|---|---|---|
 | Pre | always | never | -- |
-| Same day | the instant that student's Pre is saved | `SAMEDAY_WINDOW_HOURS` later (default 14h) | `SAMEDAY_WINDOW_HOURS` |
-| Week 4 | `WEEK4_UNLOCK_DAYS` after their Pre (default 30) | `WEEK4_OPEN_DAYS` after that (default 14) | `WEEK4_UNLOCK_DAYS`, `WEEK4_OPEN_DAYS` |
+| Post Survey 1 | the instant that student's Pre is saved | `SAMEDAY_WINDOW_HOURS` later (default 14h) | `SAMEDAY_WINDOW_HOURS` |
+| Post Survey 2 | `WEEK4_UNLOCK_DAYS` after their Pre (default 30) | `WEEK4_OPEN_DAYS` after that (default 14) | `WEEK4_UNLOCK_DAYS`, `WEEK4_OPEN_DAYS` |
 
-Submitting Pre therefore hands the student the same-day survey straight
-away: it appears as "Open now" on their Pre result page, and week-4
+Submitting Pre therefore hands the student Post Survey 1 straight
+away: it appears as "Open now" on their Pre result page, and Post Survey 2
 appears next to it as "Unlocks in 30 days".
 
 Set `GATING_DISABLED=true` if you need to walk through all three surveys
@@ -175,11 +190,11 @@ removes the whole timing design.
 Resubmitting a stage that's already done overwrites the previous answers
 rather than duplicating them. "Done" is never treated as a lock.
 
-## Sending the week-4 reminders
+## Sending the Post Survey 2 reminders
 
 `/admin/reminders` splits the cohort into three lists: due a reminder,
 still counting down, and finished. "Due" means past their unlock date,
-inside the open window, and no week-4 response yet.
+inside the open window, and no Post Survey 2 response yet.
 
 You can send to everyone due at once, or one student at a time. Both
 paths run through the same gate, so a stray click cannot mail someone
@@ -239,7 +254,7 @@ survey submissions.
   no answers, no scores — but it is an unauthenticated existence check,
   so treat the deployment as internal.
 - Gating is measured in UTC and displayed in UTC. For a Bengaluru cohort
-  the same-day window is generous enough (14h) that IST vs UTC doesn't
+  the Post Survey 1 window is generous enough (14h) that IST vs UTC doesn't
   bite, but if you shorten it, account for the 5h30m offset.
 - Admin auth is HTTP Basic over the single `ADMIN_USER`/`ADMIN_PASSWORD`
   pair — adequate for one or two people checking the dashboard, not a

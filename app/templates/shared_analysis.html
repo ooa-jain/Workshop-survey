@@ -1,19 +1,22 @@
 {% extends "base.html" %}
 {% block title %}{{ share_title }}{% endblock %}
 {% block accent %}violet{% endblock %}
-{% block wrapclass %} wide{% endblock %}
+{% block wrapclass %} wide report{% endblock %}
 {% block content %}
 <header class="masthead">
   <div class="kicker">{{ group_label }} &middot; workshop results</div>
   <h1>{{ share_title }}</h1>
   {% if share_note %}<p class="standfirst">{{ share_note }}</p>{% endif %}
-  <p class="standfirst">Where this group stood <em>before</em> the workshop, and where it stood by the end of the same day. Job Intelligence is scored 0&ndash;100 from the same five scenarios both times, so the two numbers are directly comparable.</p>
+  <p class="standfirst">Where this group stood <em>before</em> the workshop, and where it stood at Post Survey 1, by the end of the workshop day. Job Intelligence is scored 0&ndash;100 from the same five scenarios both times, so the two numbers are directly comparable.</p>
+  <p class="no-print" style="margin-top:18px">
+    <button class="btn btn-sm" type="button" data-print>Download as PDF &darr;</button>
+  </p>
 </header>
 
 {% if not o.has_data %}
 <div class="card flat">
   <div class="tab"><span class="tab-n">!</span>Results aren't ready yet</div>
-  <p class="note" style="margin-bottom:0">This page fills in once students have submitted both the Pre and the Same-day survey. So far: {{ o.n_pre }} Pre, {{ o.n_sameday }} Same-day.</p>
+  <p class="note" style="margin-bottom:0">This page fills in once students have submitted both the Pre and the Post Survey 1. So far: {{ o.n_pre }} Pre, {{ o.n_sameday }} Post Survey 1.</p>
 </div>
 {% else %}
 
@@ -21,7 +24,7 @@
 <div class="hero-stat">
   <div><div class="lab">Students in this analysis</div><div class="val">{{ o.n }}</div></div>
   <div><div class="lab">Before &mdash; Job Intelligence</div><div class="val">{{ o.ji_pre_mean }}</div></div>
-  <div><div class="lab">After workshop &mdash; same day</div><div class="val">{{ o.ji_now_mean }}</div></div>
+  <div><div class="lab">After workshop &mdash; Post Survey 1</div><div class="val">{{ o.ji_now_mean }}</div></div>
   <div><div class="lab">Mean shift</div><div class="val">{% if o.ji_delta is not none %}{{ '+' if o.ji_delta > 0 else '' }}{{ o.ji_delta }}{% else %}&mdash;{% endif %}</div></div>
 </div>
 
@@ -35,13 +38,13 @@
 <!-- 01 Where everyone moved -->
 <div class="card" data-accent="violet">
   <div class="tab"><span class="tab-n">01</span>Where everyone moved</div>
-  <p class="note" style="margin-bottom:16px">One faint arrow per student, from their position before the workshop to where they finished the same day. The same-day survey measures Job&nbsp;Intelligence only, so every arrow moves straight up (or down) &mdash; job-search behaviour can't have changed by the afternoon. The heavy arrow is the group mean; red arrows moved backwards.</p>
+  <p class="note" style="margin-bottom:16px">One faint arrow per student, from their position at Pre to where they finished at Post Survey 1. Post Survey 1 measures Job&nbsp;Intelligence only, so every arrow moves straight up (or down) &mdash; job-search behaviour can't have changed by the afternoon. The heavy arrow is the group mean; red arrows moved backwards.</p>
   <div class="svgbox">{{ o.field_svg | safe }}</div>
 </div>
 
 <!-- 02 How far the group rose -->
 <div class="card" data-accent="tang">
-  <div class="tab"><span class="tab-n">02</span>How far the group rose &mdash; before &rarr; same day</div>
+  <div class="tab"><span class="tab-n">02</span>How far the group rose &mdash; before &rarr; Post Survey 1</div>
   <p class="note" style="margin-bottom:16px">Job Intelligence, 0&ndash;100. Each thin line is one student; the heavy line is the group mean.</p>
   <div class="svgbox">{{ o.slope_svg | safe }}</div>
 </div>
@@ -49,7 +52,7 @@
 <!-- 03 Which parts landed -->
 <div class="card" data-accent="aqua">
   <div class="tab"><span class="tab-n">03</span>Which parts of the day landed</div>
-  <p class="note" style="margin-bottom:16px">Mean change per Job-Intelligence dimension, before &rarr; same day, on the 0&ndash;3 scale. The longer the bar, the more that part of the thinking moved.</p>
+  <p class="note" style="margin-bottom:16px">Mean change per Job-Intelligence dimension, before &rarr; Post Survey 1, on the 0&ndash;3 scale. The longer the bar, the more that part of the thinking moved.</p>
   <div class="svgbox">{{ o.bars_svg | safe }}</div>
 </div>
 
@@ -59,7 +62,7 @@
   <p class="note" style="margin-bottom:16px">How many students fell into each quadrant of the grid above, before the workshop and by the end of the day.</p>
   <div class="tbl-scroll">
     <table class="tbl">
-      <thead><tr><th>Quadrant</th><th class="num">Before</th><th class="num">Same day</th><th class="num">Change</th></tr></thead>
+      <thead><tr><th>Quadrant</th><th class="num">Before</th><th class="num">Post Survey 1</th><th class="num">Change</th></tr></thead>
       <tbody>
         {% for q in o.quadrants %}
         {% set before = o.quad_counts_pre[q] %}
@@ -82,7 +85,7 @@
   <p class="note" style="margin-bottom:16px">Each person's Job-Intelligence score before and after, and the role they moved from and to on the grid.</p>
   <div class="tbl-scroll">
     <table class="tbl">
-      <thead><tr><th>Student</th><th>From &rarr; to</th><th class="num">Before</th><th class="num">Same day</th><th class="num">Shift</th></tr></thead>
+      <thead><tr><th>Student</th><th>From &rarr; to</th><th class="num">Before</th><th class="num">Post Survey 1</th><th class="num">Shift</th></tr></thead>
       <tbody>
         {% for p in people %}
         <tr>
@@ -100,4 +103,15 @@
 
 <p class="note">Shared, read-only view. Individual answers stay with the research team &mdash; this page shows scores only, never anyone's email address or what they wrote.</p>
 {% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+// "Download as PDF" opens the browser's print dialog, where the destination is
+// "Save as PDF" (Chrome/Edge) or the PDF button (Safari/Firefox). The page's
+// print stylesheet does the formatting; the file is named after <title>.
+document.addEventListener("click", function (e) {
+  if (e.target.closest("[data-print]")) window.print();
+});
+</script>
 {% endblock %}

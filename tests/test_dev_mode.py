@@ -43,12 +43,12 @@ def test_dev_mode_and_individual_grant():
     client.post(f"/survey/pre?batch={BATCH}", data=pre_payload_1)
     client.post(f"/survey/pre?batch={BATCH}", data=pre_payload_2)
 
-    # 2. Verify initially Week-4 is locked for both
+    # 2. Verify initially Post Survey 2 is locked for both
     j1 = client.get(f"/api/check?stage=post_week4&batch={BATCH}&email={EMAIL1}").json()
     j2 = client.get(f"/api/check?stage=post_week4&batch={BATCH}&email={EMAIL2}").json()
     assert j1["state"] == "locked", f"Expected locked, got {j1['state']}"
     assert j2["state"] == "locked", f"Expected locked, got {j2['state']}"
-    print("PASS: Initially both users locked for Week 4")
+    print("PASS: Initially both users locked for Post Survey 2")
 
     # 3. Grant individual access to EMAIL1
     r = client.post("/admin/reminders/grant-access", data={"batch": BATCH, "email": EMAIL1, "enabled": "true"}, auth=auth, follow_redirects=False)
@@ -72,7 +72,7 @@ def test_dev_mode_and_individual_grant():
     j2 = client.get(f"/api/check?stage=post_week4&batch={BATCH}&email={EMAIL2}").json()
     assert j1["ok"] and j1["state"] == "open", f"Dev mode: expected EMAIL1 open, got {j1}"
     assert j2["ok"] and j2["state"] == "open", f"Dev mode: expected EMAIL2 open, got {j2}"
-    print("PASS: Developer mode unlocked ALL users at a time for Week 4")
+    print("PASS: Developer mode unlocked ALL users at a time for Post Survey 2")
 
     # 6. Disable Developer Mode globally
     client.post("/admin/reminders/dev-mode", data={"batch": BATCH, "enabled": "false"}, auth=auth, follow_redirects=False)

@@ -71,12 +71,12 @@ def dimension_arrow_row(desc, left, right, points, width=560, row_h=54):
     svg.append(f'<line x1="{track_x0}" y1="{track_y}" x2="{track_x1}" y2="{track_y}" '
                 f'stroke="{RULE}" stroke-width="3" stroke-linecap="round"/>')
 
-    # Point labels stack downward by order (Pre, then Same day, then Week 4)
+    # Point labels stack downward by order (Pre, then Post Survey 1, then Post Survey 2)
     # so that when two points land on the same spot their labels never
     # overlap -- each sits on its own line below the track.
     label_y = [track_y + 20 + 11 * i for i in range(len(points))]
 
-    # intermediate point (e.g. same-day), if present
+    # intermediate point (e.g. Post Survey 1), if present
     if len(points) == 3:
         mx = x_of(points[1]["score_0_3"])
         svg.append(f'<circle cx="{mx}" cy="{track_y}" r="4.5" fill="{LIME}" stroke="{INK}" stroke-width="1.5"/>')
@@ -116,7 +116,7 @@ def quadrant_svg(series, width=640, height=460):
     """
     series: ordered list of {"label", "job_search", "job_intelligence"} --
     2 points (pre, week4) or 3 (pre, sameday [JI only], week4).
-    A same-day point with job_search=None is drawn as a dotted vertical
+    A Post Survey 1 point with job_search=None is drawn as a dotted vertical
     step directly above the pre point, since search behaviour cannot have
     changed by the same afternoon.
     """
@@ -144,7 +144,7 @@ def quadrant_svg(series, width=640, height=460):
         markerWidth="6" markerHeight="6" orient="auto-start-reverse">
         <path d="M0,0 L10,5 L0,10 z" fill="{TEAL}"/></marker></defs>''')
 
-    # dotted same-day step (JI known, search unknown) directly above pre
+    # dotted Post Survey 1 step (JI known, search unknown) directly above pre
     sameday = next((p for p in series if p.get("job_search") is None), None)
     pre = known[0] if known else None
     if sameday and pre:
@@ -178,16 +178,16 @@ def quadrant_svg(series, width=640, height=460):
 # aggregated data computed in main.py, not synthetic/random data.
 # ---------------------------------------------------------------------------
 
-def quadrant_field_svg(students, width=640, height=470, end_label="week 4"):
+def quadrant_field_svg(students, width=640, height=470, end_label="Post Survey 2"):
     """
     students: list of {"job_search_pre","ji_pre","job_search_w4","ji_w4"}
     One faint arrow per student, a heavier arrow for the cohort mean.
     Arrows where JI fell are drawn in the warning colour.
 
-    end_label names the second point (default "week 4"). For the same-day
+    end_label names the second point (default "Post Survey 2"). For the Post Survey 1
     view, pass job_search_w4 == job_search_pre so each arrow is a purely
     vertical Job-Intelligence move -- search behaviour cannot have changed
-    by the same afternoon -- and set end_label="same day".
+    by the same afternoon -- and set end_label="Post Survey 1".
     """
     x0, y0, pw, ph = 70, 30, 520, 360
 
@@ -243,9 +243,9 @@ def quadrant_field_svg(students, width=640, height=470, end_label="week 4"):
     return "".join(parts)
 
 
-def diverging_bars_svg(dim_rows, width=640, height=None, span_label="pre \u2192 week 4"):
+def diverging_bars_svg(dim_rows, width=640, height=None, span_label="Pre \u2192 Post Survey 2"):
     """dim_rows: list of {"desc","left","right","mean_delta"} (0-3 scale), any order -- sorted here descending.
-    span_label names the two ends of the comparison (e.g. 'pre \u2192 same day')."""
+    span_label names the two ends of the comparison (e.g. 'Pre \u2192 Post Survey 1')."""
     rows = sorted(dim_rows, key=lambda r: -r["mean_delta"])
     row_h = 46
     height = height or (30 + row_h * len(rows) + 40)
@@ -283,11 +283,11 @@ def slopegraph_svg(students, width=640, height=380, has_sameday=False, col_label
     """
     students: list of {"label"(unused), "ji_pre", "ji_sameday"(optional), "ji_w4"}
     Renders individual thin lines plus a heavy cohort-mean line across
-    2 or 3 columns depending on whether same-day data is available for
+    2 or 3 columns depending on whether Post Survey 1 data is available for
     (at least some of) the cohort. col_labels overrides the column captions
-    (e.g. ["Pre", "Same day"]) when the second point isn't Week 4.
+    (e.g. ["Pre", "Post Survey 1"]) when the second point isn't Post Survey 2.
     """
-    labels = col_labels or (["Pre", "Week 4"] if not has_sameday else ["Pre", "Same day", "Week 4"])
+    labels = col_labels or (["Pre", "Post Survey 2"] if not has_sameday else ["Pre", "Post Survey 1", "Post Survey 2"])
     n_cols = len(labels)
     x0, x1 = 70, width - 50
     cols = [x0 + i * (x1 - x0) / (n_cols - 1) for i in range(n_cols)]

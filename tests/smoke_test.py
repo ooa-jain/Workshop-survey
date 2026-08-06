@@ -4,7 +4,7 @@ Not part of the shipped app -- mongomock is a test-time dependency only.
 Run: python3 tests/smoke_test.py   (from the project root)
 
 Covers the full student arc AND the stage gating, including the case that
-matters most: week-4 must be refused before day 30 and accepted after it.
+matters most: Post Survey 2 must be refused before day 30 and accepted after it.
 """
 import sys, os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
@@ -85,15 +85,15 @@ r_get = client.get(f"/survey/pre?batch={BATCH}&email={EMAIL}")
 check("GET Pre for finished student shows results, not the form",
       "Look me up" in r_get.text and "data-stepper" not in r_get.text)
 
-# The whole point of the change: same-day is visible the moment Pre lands.
-check("Pre result offers the same-day survey now", "/survey/post-sameday" in r_correct_pre.text)
-check("Pre result shows week-4 as locked", "Unlocks in" in r_correct_pre.text)
+# The whole point of the change: Post Survey 1 is visible the moment Pre lands.
+check("Pre result offers the Post Survey 1 now", "/survey/post-sameday" in r_correct_pre.text)
+check("Pre result shows Post Survey 2 as locked", "Unlocks in" in r_correct_pre.text)
 # A finished Pre's "View results" points at the status/home page, not the form.
 check("Pre 'View results' links to the status page", "/status?batch=" in r_correct_pre.text)
 
 # ---- api/check reflects the gate ----
 j = client.get(f"/api/check?stage=post_sameday&batch={BATCH}&email={EMAIL}").json()
-check("api/check: same-day open after Pre", j["ok"] and j["state"] == "open")
+check("api/check: Post Survey 1 open after Pre", j["ok"] and j["state"] == "open")
 check("api/check: has_password is True", j.get("has_password") is True)
 
 # Verify password API endpoint
@@ -112,9 +112,9 @@ r_verify_new = client.post("/api/verify-password", json={"email": EMAIL, "batch"
 check("api/verify-password new password correct", r_verify_new.json().get("ok") is True)
 
 j = client.get(f"/api/check?stage=post_week4&batch={BATCH}&email={EMAIL}").json()
-check("api/check: week-4 locked before day 30", (not j["ok"]) and j["state"] == "locked")
+check("api/check: Post Survey 2 locked before day 30", (not j["ok"]) and j["state"] == "locked")
 j = client.get(f"/api/check?stage=post_sameday&batch={BATCH}&email=nobody@example.com").json()
-check("api/check: same-day locked with no Pre", (not j["ok"]) and j["state"] == "locked")
+check("api/check: Post Survey 1 locked with no Pre", (not j["ok"]) and j["state"] == "locked")
 
 # ---- SAME-DAY ----
 SAMEDAY_PAYLOAD = {
@@ -129,21 +129,21 @@ SAMEDAY_PAYLOAD = {
     "f2": ["market_gaps", "job_modularity"], "f3": "More time on the group activity.",
 }
 
-# The same-day survey no longer asks for a password -- a submission with no
+# The Post Survey 1 no longer asks for a password -- a submission with no
 # password at all still goes through and is matched to Pre by email.
 no_pwd_payload = SAMEDAY_PAYLOAD.copy()
 no_pwd_payload.pop("password", None)
 r = client.post(f"/survey/post-sameday?batch={BATCH}", data=no_pwd_payload)
-check("POST same-day needs no password", r.status_code == 200 and "Incorrect password." not in r.text)
+check("POST Post Survey 1 needs no password", r.status_code == 200 and "Incorrect password." not in r.text)
 
 r = client.post(f"/survey/post-sameday?batch={BATCH}", data=SAMEDAY_PAYLOAD)
-check("POST same-day -> 200", r.status_code == 200)
+check("POST Post Survey 1 -> 200", r.status_code == 200)
 sd = db_module.get_response(EMAIL, "post_sameday", BATCH)
-check("Same-day matched to Pre", sd and sd["scores"]["matched_pre"] is True)
-check("Same-day delta computed", sd and sd["scores"]["ji_delta_vs_pre"] > 0)
-check("Same-day f2 stores multiple options as list", sd and sd["raw_answers"]["f2"] == ["market_gaps", "job_modularity"])
+check("Post Survey 1 matched to Pre", sd and sd["scores"]["matched_pre"] is True)
+check("Post Survey 1 delta computed", sd and sd["scores"]["ji_delta_vs_pre"] > 0)
+check("Post Survey 1 f2 stores multiple options as list", sd and sd["raw_answers"]["f2"] == ["market_gaps", "job_modularity"])
 
-# ---- WEEK 4: blocked before 30 days ----
+# ---- POST SURVEY 2: blocked before 30 days ----
 WEEK4_PAYLOAD = {
     "name": "Test Student", "email": EMAIL, "batch": BATCH,
     "password": "new-secret-password",
@@ -156,11 +156,11 @@ WEEK4_PAYLOAD = {
 }
 
 r = client.post(f"/survey/post-week4?batch={BATCH}", data=WEEK4_PAYLOAD)
-check("Week-4 POST refused before day 30", "Not open" in r.text or "Unlocks in" in r.text)
-check("Week-4 not written while locked", db_module.get_response(EMAIL, "post_week4", BATCH) is None)
+check("Post Survey 2 POST refused before day 30", "Not open" in r.text or "Unlocks in" in r.text)
+check("Post Survey 2 not written while locked", db_module.get_response(EMAIL, "post_week4", BATCH) is None)
 
 r = client.get(f"/survey/post-week4?batch={BATCH}&email={EMAIL}")
-check("Week-4 GET shows the locked page", "Unlocks in" in r.text and "data-stepper" not in r.text)
+check("Post Survey 2 GET shows the locked page", "Unlocks in" in r.text and "data-stepper" not in r.text)
 
 # ---- reminders: nobody due yet ----
 auth = ("admin", "change-me")
@@ -172,7 +172,7 @@ check("Nobody due before day 30", "Nobody is due" in r.text)
 backdate_pre(31)
 
 j = client.get(f"/api/check?stage=post_week4&batch={BATCH}&email={EMAIL}").json()
-check("api/check: week-4 open after day 30", j["ok"] and j["state"] == "open")
+check("api/check: Post Survey 2 open after day 30", j["ok"] and j["state"] == "open")
 
 r = client.get(f"/admin/reminders?batch={BATCH}", auth=auth)
 check("Student appears as due after day 30", EMAIL in r.text)
@@ -185,25 +185,25 @@ check("Nothing logged when mail is off",
 
 # signed link should validate
 tok = eligibility.make_token(EMAIL, BATCH)
-check("Signed week-4 token validates", eligibility.check_token(tok, EMAIL, BATCH))
+check("Signed Post Survey 2 token validates", eligibility.check_token(tok, EMAIL, BATCH))
 check("Tampered token rejected", not eligibility.check_token("deadbeef", EMAIL, BATCH))
 
 r = client.get(f"/survey/post-week4?batch={BATCH}&email={EMAIL}&t={tok}")
 check("Signed link prefills the name", 'value="Test Student"' in r.text)
 
-# Try week-4 submission with incorrect password (now unlocked)
+# Try Post Survey 2 submission with incorrect password (now unlocked)
 bad_week4_payload = WEEK4_PAYLOAD.copy()
 bad_week4_payload["password"] = "wrong-password"
 r = client.post(f"/survey/post-week4?batch={BATCH}", data=bad_week4_payload)
-check("POST week-4 with bad password fails", "Incorrect password." in r.text)
+check("POST Post Survey 2 with bad password fails", "Incorrect password." in r.text)
 
-# ---- WEEK 4: accepted now ----
+# ---- POST SURVEY 2: accepted now ----
 r = client.post(f"/survey/post-week4?batch={BATCH}", data=WEEK4_PAYLOAD)
-check("POST week-4 -> 200 after unlock", r.status_code == 200)
+check("POST Post Survey 2 -> 200 after unlock", r.status_code == 200)
 w4 = db_module.get_response(EMAIL, "post_week4", BATCH)
-check("Week-4 doc stored", w4 is not None)
-check("Week-4 JI rose vs Pre", w4 and w4["scores"]["ji_delta_vs_pre"] > 0)
-check("Week-4 untargeted search fell vs Pre", w4 and w4["scores"]["job_search_delta_vs_pre"] < 0)
+check("Post Survey 2 doc stored", w4 is not None)
+check("Post Survey 2 JI rose vs Pre", w4 and w4["scores"]["ji_delta_vs_pre"] > 0)
+check("Post Survey 2 untargeted search fell vs Pre", w4 and w4["scores"]["job_search_delta_vs_pre"] < 0)
 
 # ---- resubmission overwrites rather than duplicating ----
 client.post(f"/survey/pre?batch={BATCH}", data=PRE_PAYLOAD)
@@ -224,7 +224,7 @@ check("Results page links to the Outcome + Impact tabs",
 r = client.get(f"/admin?batch={BATCH}")
 check("Admin requires auth", r.status_code == 401)
 
-# Outcome tab: first-day (Pre -> Same-day) analysis with headcounts.
+# Outcome tab: first-day (Pre -> Post Survey 1) analysis with headcounts.
 r = client.get(f"/admin/outcome?batch={BATCH}", auth=auth)
 check("Outcome tab -> 200", r.status_code == 200)
 check("Outcome tab shows first-day movement", "first day" in r.text and "Rose" in r.text)
@@ -248,7 +248,7 @@ check("Student delete requires auth",
       client.post("/admin/student/delete", data={"batch": BATCH, "email": EMAIL},
                   follow_redirects=False).status_code == 401)
 
-# Deleting a single student removes all of their stages (Pre/Same-day/Week-4).
+# Deleting a single student removes all of their stages (Pre/Post Survey 1/Post Survey 2).
 before = len(db_module.get_student_arc(EMAIL, BATCH))
 r = client.post("/admin/student/delete", data={"batch": BATCH, "email": EMAIL},
                 auth=auth, follow_redirects=False)

@@ -1,12 +1,12 @@
 {% extends "base.html" %}
-{% block title %}Week-4 reminders &middot; {{ app_name }}{% endblock %}
+{% block title %}Post Survey 2 reminders &middot; {{ app_name }}{% endblock %}
 {% block accent %}aqua{% endblock %}
 {% block wrapclass %} wide{% endblock %}
 {% block content %}
 <header class="masthead">
   <div class="kicker">Admin &middot; {{ batch }}</div>
-  <h1>Week-4 <em>reminders</em></h1>
-  <p class="standfirst">Each student's 4-week survey unlocks {{ unlock_days }} days after their own Pre submission and stays open {{ open_days }} days. Admin can also grant individual access or switch on Auto-Fill All Options to allow all students to access at once.</p>
+  <h1>Post Survey 2 <em>reminders</em></h1>
+  <p class="standfirst">Each student's Post Survey 2 unlocks {{ unlock_days }} days after their own Pre submission and stays open {{ open_days }} days. Admin can also grant individual access or switch on Auto-Fill All Options to allow all students to access at once.</p>
 </header>
 
 {% from "_macros.html" import admin_tabs with context %}
@@ -26,9 +26,9 @@
     <h3 style="margin:0 0 4px 0; font-size:16px;">Auto-Fill All Options</h3>
     <p class="note" style="margin:0">
       {% if dev_mode %}
-        <strong style="color:var(--ok,#10b981)">AUTO-FILL IS ON:</strong> Every survey opens with all answer options pre-filled for testing, and all students can reach the Week-4 survey at once (countdown bypassed).
+        <strong style="color:var(--ok,#10b981)">AUTO-FILL IS ON:</strong> Every survey opens with all answer options pre-filled for testing, and all students can reach the Post Survey 2 survey at once (countdown bypassed).
       {% else %}
-        <strong>Auto-Fill is OFF:</strong> Surveys behave normally and Week-4 unlocks {{ unlock_days }} days after Pre submission, or when Admin grants individual access below.
+        <strong>Auto-Fill is OFF:</strong> Surveys behave normally and Post Survey 2 unlocks {{ unlock_days }} days after Pre submission, or when Admin grants individual access below.
       {% endif %}
     </p>
   </div>
@@ -44,7 +44,7 @@
 <div class="hero-stat">
   <div><div class="lab">Due / Unlocked</div><div class="val">{{ due|length }}</div></div>
   <div><div class="lab">Still counting down</div><div class="val">{{ waiting|length }}</div></div>
-  <div><div class="lab">Week 4 completed</div><div class="val">{{ complete|length }}</div></div>
+  <div><div class="lab">Post Survey 2 completed</div><div class="val">{{ complete|length }}</div></div>
 </div>
 
 <div class="card" data-accent="aqua">
@@ -103,10 +103,10 @@
 <div class="card" data-accent="tang">
   <div class="tab"><span class="tab-n">02</span>Still counting down</div>
   {% if waiting %}
-    <p class="note" style="margin-bottom:16px">Sorted by who unlocks first. Admin can grant individual access to any user below to unlock Week-4 early for them.</p>
+    <p class="note" style="margin-bottom:16px">Sorted by who unlocks first. Admin can grant individual access to any user below to unlock Post Survey 2 early for them.</p>
     <div class="tbl-scroll">
     <table class="tbl">
-      <thead><tr><th>Student</th><th class="num">Pre</th><th class="num">Unlocks</th><th class="num">Days left</th><th class="num">Same-day</th><th class="num">Admin Grant</th></tr></thead>
+      <thead><tr><th>Student</th><th class="num">Pre</th><th class="num">Unlocks</th><th class="num">Days left</th><th class="num">Post Survey 1</th><th class="num">Admin Grant</th></tr></thead>
       <tbody>
         {% for r in waiting %}
         <tr>
@@ -138,7 +138,7 @@
   {% if complete %}
     <div class="tbl-scroll">
     <table class="tbl">
-      <thead><tr><th>Student</th><th class="num">Pre</th><th class="num">Same-day</th></tr></thead>
+      <thead><tr><th>Student</th><th class="num">Pre</th><th class="num">Post Survey 1</th></tr></thead>
       <tbody>
         {% for r in complete %}
         <tr>
@@ -151,7 +151,7 @@
     </table>
     </div>
   {% else %}
-    <p class="note" style="margin-bottom:0">No Week-4 responses yet.</p>
+    <p class="note" style="margin-bottom:0">No Post Survey 2 responses yet.</p>
   {% endif %}
 </div>
 {% endblock %}

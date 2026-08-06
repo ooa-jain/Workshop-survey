@@ -118,7 +118,7 @@ def control_mean(c1, c2, c3):
 
 def control_shift(mean_a, mean_b):
     """
-    Absolute shift between two control means (e.g. Pre vs Week 4).
+    Absolute shift between two control means (e.g. Pre vs Post Survey 2).
     < 0.3  -> credible
     0.3-0.5 -> caveat
     > 0.5  -> likely acquiescence, discount the JI gain

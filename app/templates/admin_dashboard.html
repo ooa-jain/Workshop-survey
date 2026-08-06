@@ -12,29 +12,29 @@
 
 <div class="hero-stat">
   <div><div class="lab">Pre submitted</div><div class="val">{{ n_pre }}</div></div>
-  <div><div class="lab">Same-day submitted</div><div class="val">{{ n_sameday }}</div></div>
-  <div><div class="lab">4-week submitted</div><div class="val">{{ n_week4 }}</div></div>
-  <div><div class="lab">Matched (Pre + Week 4)</div><div class="val">{{ n_matched }}</div></div>
+  <div><div class="lab">Post Survey 1 submitted</div><div class="val">{{ n_sameday }}</div></div>
+  <div><div class="lab">Post Survey 2 submitted</div><div class="val">{{ n_week4 }}</div></div>
+  <div><div class="lab">Matched (Pre + Post Survey 2)</div><div class="val">{{ n_matched }}</div></div>
 </div>
 
 <div class="card flat">
   <div class="tab"><span class="tab-n">&rarr;</span>Two ways to read the movement</div>
   <p class="note" style="margin-bottom:0">
-    <a href="/admin/outcome?batch={{ batch }}"><b>Outcome &middot; first day</b></a> &mdash; how the cohort moved by the end of the workshop day (Pre &rarr; Same-day).
-    <a href="/admin/impact?batch={{ batch }}"><b>Impact &middot; 4 weeks</b></a> &mdash; the full journey to Week&nbsp;4, with quadrant migrations and per-student movement.
+    <a href="/admin/outcome?batch={{ batch }}"><b>Outcome &middot; Post Survey 1</b></a> &mdash; how the cohort moved by the end of the workshop day (Pre &rarr; Post Survey 1).
+    <a href="/admin/impact?batch={{ batch }}"><b>Impact &middot; Post Survey 2</b></a> &mdash; the full journey to Post Survey 2, with quadrant migrations and per-student movement.
   </p>
 </div>
 
 {% if n_matched == 0 %}
 <div class="card flat">
   <div class="tab"><span class="tab-n">!</span>Nothing to compare yet</div>
-  <p class="note" style="margin-bottom:0">The charts below stay empty until at least one student has submitted both a Pre and a Week-4 survey. Counts above update immediately.</p>
+  <p class="note" style="margin-bottom:0">The charts below stay empty until at least one student has submitted both a Pre and a Post Survey 2 survey. Counts above update immediately.</p>
 </div>
 {% endif %}
 
 <div class="card" data-accent="violet">
   <div class="tab"><span class="tab-n">01</span>Where everyone moved</div>
-  <p class="note" style="margin-bottom:16px">One faint arrow per matched student, Pre &rarr; Week 4. The heavy arrow is the cohort mean.</p>
+  <p class="note" style="margin-bottom:16px">One faint arrow per matched student, Pre &rarr; Post Survey 2. The heavy arrow is the cohort mean.</p>
   <div class="svgbox">{{ field_svg | safe }}</div>
 </div>
 
@@ -42,7 +42,7 @@
   <div class="tab"><span class="tab-n">02</span>Quadrant population</div>
   <div class="tbl-scroll">
   <table class="tbl">
-    <thead><tr><th>Quadrant</th><th class="num">Pre</th><th class="num">Week 4</th><th class="num">Change</th></tr></thead>
+    <thead><tr><th>Quadrant</th><th class="num">Pre</th><th class="num">Post Survey 2</th><th class="num">Change</th></tr></thead>
     <tbody>
       {% for label in ["Volume Applicant","Busy Strategist","Drifting","Job Intelligent"] %}
       {% set delta = quad_counts_w4[label] - quad_counts_pre[label] %}
@@ -60,7 +60,7 @@
 
 <div class="card" data-accent="aqua">
   <div class="tab"><span class="tab-n">03</span>Which parts of the day landed</div>
-  <p class="note" style="margin-bottom:16px">Mean change per dimension, Pre &rarr; Week 4, on the 0&ndash;3 scale.</p>
+  <p class="note" style="margin-bottom:16px">Mean change per dimension, Pre &rarr; Post Survey 2, on the 0&ndash;3 scale.</p>
   <div class="svgbox">{{ bars_svg | safe }}</div>
 </div>
 
@@ -71,7 +71,7 @@
 
 <div class="card" data-accent="violet">
   <div class="tab"><span class="tab-n">05</span>Is the shift believable?</div>
-  <p class="note" style="margin-bottom:0">Mean absolute shift on control items C1&ndash;C3, Pre &rarr; Week 4: <b>{{ mean_control_shift }}</b>
+  <p class="note" style="margin-bottom:0">Mean absolute shift on control items C1&ndash;C3, Pre &rarr; Post Survey 2: <b>{{ mean_control_shift }}</b>
     {% if mean_control_shift < 0.3 %}&mdash; below the 0.3 threshold, so the Job Intelligence movement looks credible.
     {% elif mean_control_shift <= 0.5 %}&mdash; in the 0.3&ndash;0.5 caveat range. Note this when presenting.
     {% else %}&mdash; above 0.5. Treat the Job Intelligence gain with real caution; this may be blanket agreement rather than genuine movement.

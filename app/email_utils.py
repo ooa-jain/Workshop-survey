@@ -8,7 +8,7 @@ def send_result_email(to_email, to_name, subject, html_body, images=None):
     """
     images: dict of {content_id: png_bytes}, referenced in html_body as
             <img src="cid:CONTENT_ID">. Pass None/{} for a text-only mail
-            such as the week-4 reminder.
+            such as the Post Survey 2 reminder.
 
     Does nothing (logs to stdout) if EMAIL_ENABLED is false or SMTP host
     is unset -- lets the app run in a dev/demo environment without a

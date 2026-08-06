@@ -1,13 +1,13 @@
 {% extends "base.html" %}
 {% from "_macros.html" import admin_tabs with context %}
-{% block title %}Outcome &middot; first day &middot; {{ app_name }}{% endblock %}
+{% block title %}Outcome &middot; Post Survey 1 &middot; {{ app_name }}{% endblock %}
 {% block accent %}tang{% endblock %}
 {% block wrapclass %} wide{% endblock %}
 {% block content %}
 <header class="masthead">
   <div class="kicker">Admin &middot; {{ batch }}</div>
-  <h1>Outcome &middot; <em>first day</em></h1>
-  <p class="standfirst">How the cohort moved by the end of the workshop day &mdash; Pre &rarr; Same-day. The same-day check-in measures Job&nbsp;Intelligence only, so this is the immediate first-day shift in thinking.</p>
+  <h1>Outcome &middot; <em>Post Survey 1</em></h1>
+  <p class="standfirst">How the cohort moved by the end of the workshop day &mdash; Pre &rarr; Post Survey 1. The Post Survey 1 check-in measures Job&nbsp;Intelligence only, so this is the immediate first-day shift in thinking.</p>
 </header>
 
 {{ admin_tabs('outcome', batch, n_due) }}
@@ -15,13 +15,13 @@
 {% if not o.has_data %}
 <div class="card flat">
   <div class="tab"><span class="tab-n">!</span>No first-day pairs yet</div>
-  <p class="note" style="margin-bottom:0">This fills in once at least one student has submitted both a Pre and a Same-day survey. So far: {{ o.n_pre }} Pre, {{ o.n_sameday }} Same-day.</p>
+  <p class="note" style="margin-bottom:0">This fills in once at least one student has submitted both a Pre and a Post Survey 1. So far: {{ o.n_pre }} Pre, {{ o.n_sameday }} Post Survey 1.</p>
 </div>
 {% else %}
 
 <!-- Who took it + which way they moved -->
 <div class="hero-stat">
-  <div><div class="lab">Took same-day (matched)</div><div class="val">{{ o.n }}</div></div>
+  <div><div class="lab">Took Post Survey 1 (matched)</div><div class="val">{{ o.n }}</div></div>
   <div><div class="lab">Rose</div><div class="val">{{ o.rose }}<small> of {{ o.n }}</small></div></div>
   <div><div class="lab">Fell</div><div class="val">{{ o.fell }}</div></div>
   <div><div class="lab">No change</div><div class="val">{{ o.same }}</div></div>
@@ -29,26 +29,26 @@
 
 <div class="hero-stat">
   <div><div class="lab">Job Intelligence (Pre)</div><div class="val">{{ o.ji_pre_mean }}</div></div>
-  <div><div class="lab">Job Intelligence (Same day)</div><div class="val">{{ o.ji_now_mean }}</div></div>
+  <div><div class="lab">Job Intelligence (Post Survey 1)</div><div class="val">{{ o.ji_now_mean }}</div></div>
   <div><div class="lab">Mean shift</div><div class="val">{% if o.ji_delta is not none %}{{ '+' if o.ji_delta > 0 else '' }}{{ o.ji_delta }}{% else %}&mdash;{% endif %}</div></div>
   <div><div class="lab">Improved</div><div class="val">{% if o.pct_improved is not none %}{{ o.pct_improved }}%{% else %}&mdash;{% endif %}</div></div>
 </div>
 
 <div class="card" data-accent="violet">
   <div class="tab"><span class="tab-n">01</span>Where everyone moved</div>
-  <p class="note" style="margin-bottom:16px">One faint arrow per student who took Pre and Same-day, Pre &rarr; Same&nbsp;day. Same-day measures Job&nbsp;Intelligence only, so each arrow moves straight up (or down) &mdash; Job Search is unchanged from Pre. The heavy arrow is the cohort mean; red arrows moved backwards on Job Intelligence.</p>
+  <p class="note" style="margin-bottom:16px">One faint arrow per student who took both, Pre &rarr; Post Survey&nbsp;1. Post Survey 1 measures Job&nbsp;Intelligence only, so each arrow moves straight up (or down) &mdash; Job Search is unchanged from Pre. The heavy arrow is the cohort mean; red arrows moved backwards on Job Intelligence.</p>
   <div class="svgbox">{{ o.field_svg | safe }}</div>
 </div>
 
 <div class="card" data-accent="tang">
-  <div class="tab"><span class="tab-n">02</span>How far the cohort rose &mdash; Pre &rarr; Same day</div>
+  <div class="tab"><span class="tab-n">02</span>How far the cohort rose &mdash; Pre &rarr; Post Survey 1</div>
   <p class="note" style="margin-bottom:16px">Job Intelligence, 0&ndash;100. Each thin line is one student; the heavy line is the cohort mean.</p>
   <div class="svgbox">{{ o.slope_svg | safe }}</div>
 </div>
 
 <div class="card" data-accent="aqua">
   <div class="tab"><span class="tab-n">03</span>Which parts of the day landed</div>
-  <p class="note" style="margin-bottom:16px">Mean change per Job-Intelligence dimension, Pre &rarr; Same day, on the 0&ndash;3 scale.</p>
+  <p class="note" style="margin-bottom:16px">Mean change per Job-Intelligence dimension, Pre &rarr; Post Survey 1, on the 0&ndash;3 scale.</p>
   <div class="svgbox">{{ o.bars_svg | safe }}</div>
 </div>
 
@@ -56,7 +56,7 @@
   <div class="tab"><span class="tab-n">04</span>Every student, biggest first-day gain first</div>
   <div class="tbl-scroll">
     <table class="tbl">
-      <thead><tr><th>Student</th><th>From &rarr; to</th><th class="num">Pre</th><th class="num">Same day</th><th class="num">Shift</th></tr></thead>
+      <thead><tr><th>Student</th><th>From &rarr; to</th><th class="num">Pre</th><th class="num">Post Survey 1</th><th class="num">Shift</th></tr></thead>
       <tbody>
         {% for r in o.rows %}
         <tr>

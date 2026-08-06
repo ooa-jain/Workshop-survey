@@ -38,10 +38,10 @@ class Settings:
     WORKSHOP_BATCH = os.environ.get("WORKSHOP_BATCH", "2026-final-year")
 
     # --- Stage gating -------------------------------------------------------
-    # Same-day survey opens the moment that student's Pre lands, and closes
+    # Post Survey 1 survey opens the moment that student's Pre lands, and closes
     # this many hours later. 14h covers a 9:30am Pre -> 11:30pm same night.
     SAMEDAY_WINDOW_HOURS = int(os.environ.get("SAMEDAY_WINDOW_HOURS", "14"))
-    # Week-4 survey stays locked this many days after that student's Pre.
+    # Post Survey 2 survey stays locked this many days after that student's Pre.
     WEEK4_UNLOCK_DAYS = int(os.environ.get("WEEK4_UNLOCK_DAYS", "30"))
     # ...and then stays open this many days before expiring.
     WEEK4_OPEN_DAYS = int(os.environ.get("WEEK4_OPEN_DAYS", "14"))

@@ -234,8 +234,8 @@ def locked_page(request, stage, st, batch, email=None):
 
 def next_steps_for(email, batch):
     """The three-stage strip shown at the bottom of every result page, so a
-    student who has just finished Pre immediately sees the same-day survey
-    sitting open and the week-4 one counting down."""
+    student who has just finished Pre immediately sees the Post Survey 1
+    sitting open and the Post Survey 2 one counting down."""
     dev_mode = db.get_dev_mode()
     return eligibility.full_status(db.get_student_arc(email, batch), dev_mode=dev_mode)
 
@@ -265,9 +265,9 @@ def build_progress(arc):
     if pre:
         rows.append(stage_row("Pre", pre, True))
     if sameday:
-        rows.append(stage_row("Same day", sameday, False))
+        rows.append(stage_row("Post Survey 1", sameday, False))
     if week4:
-        rows.append(stage_row("Week 4", week4, True))
+        rows.append(stage_row("Post Survey 2", week4, True))
 
     # Growth: Pre -> the most recent survey that carries each score.
     ji_pre = pre["scores"]["job_intelligence"]["total"] if pre else None
@@ -283,10 +283,10 @@ def build_progress(arc):
     if pre:
         quad_series.append({"label": "Pre", "job_search": js_pre, "job_intelligence": ji_pre})
     if sameday:
-        quad_series.append({"label": "Same day", "job_search": None,
+        quad_series.append({"label": "Post Survey 1", "job_search": None,
                             "job_intelligence": sameday["scores"]["job_intelligence"]["total"]})
     if week4:
-        quad_series.append({"label": "Week 4", "job_search": week4["scores"]["job_search"]["total"],
+        quad_series.append({"label": "Post Survey 2", "job_search": week4["scores"]["job_search"]["total"],
                             "job_intelligence": week4["scores"]["job_intelligence"]["total"]})
 
     dim_svg_rows = []
@@ -294,10 +294,10 @@ def build_progress(arc):
         for i, dim in enumerate(pre["scores"]["job_intelligence"]["dimensions"]):
             pts = [{"label": "Pre", "score_0_3": dim["score_0_3"]}]
             if sameday:
-                pts.append({"label": "Same day",
+                pts.append({"label": "Post Survey 1",
                             "score_0_3": sameday["scores"]["job_intelligence"]["dimensions"][i]["score_0_3"]})
             if week4:
-                pts.append({"label": "Week 4",
+                pts.append({"label": "Post Survey 2",
                             "score_0_3": week4["scores"]["job_intelligence"]["dimensions"][i]["score_0_3"]})
             dim_svg_rows.append(charts_svg.dimension_arrow_row(dim["desc"], dim["left"], dim["right"], pts))
 
@@ -453,7 +453,7 @@ async def pre_submit(request: Request):
     # Pre is write-once. Once a student has a Pre on record it can't be
     # edited or overwritten -- bounce them to their results page. Their
     # password is set here, on that first (and only) submission, and reused
-    # to gate the Week-4 survey.
+    # to gate the Post Survey 2.
     pre_doc = db.get_response(email, "pre", batch)
     if pre_doc:
         return RedirectResponse(_status_url(batch, email), status_code=303)
@@ -546,7 +546,7 @@ async def sameday_submit(request: Request):
     if blocked:
         return locked_page(request, "post_sameday", blocked[0], batch, email)
 
-    # The same-day survey no longer asks for a password -- it's a low-stakes
+    # The Post Survey 1 no longer asks for a password -- it's a low-stakes
     # check-in and the email alone matches it to the Pre response.
     pre_doc = db.get_response(email, "pre", batch)
 
@@ -582,11 +582,11 @@ async def sameday_submit(request: Request):
         pre_js = pre_doc["scores"]["job_search"]
         quad_series = [
             {"label": "Pre", "job_search": pre_js["total"], "job_intelligence": pre_ji["total"]},
-            {"label": "Same day", "job_search": None, "job_intelligence": ji["total"]},
+            {"label": "Post Survey 1", "job_search": None, "job_intelligence": ji["total"]},
         ]
         for i, dim in enumerate(ji["dimensions"]):
             pts = [{"label": "Pre", "score_0_3": pre_ji["dimensions"][i]["score_0_3"]},
-                   {"label": "Same day", "score_0_3": dim["score_0_3"]}]
+                   {"label": "Post Survey 1", "score_0_3": dim["score_0_3"]}]
             dim_rows_svg.append(charts_svg.dimension_arrow_row(dim["desc"], dim["left"], dim["right"], pts))
             dim_rows_png.append({"desc": dim["desc"], "left": dim["left"], "right": dim["right"], "points": pts})
     else:
@@ -704,24 +704,24 @@ async def week4_submit(request: Request):
 
     db.upsert_response(email, name, "post_week4", batch, raw, scores)
 
-    quad_series = [{"label": "Week 4", "job_search": js["total"], "job_intelligence": ji["total"]}]
-    dim_points_by_dim = [[{"label": "Week 4", "score_0_3": d["score_0_3"]}] for d in ji["dimensions"]]
+    quad_series = [{"label": "Post Survey 2", "job_search": js["total"], "job_intelligence": ji["total"]}]
+    dim_points_by_dim = [[{"label": "Post Survey 2", "score_0_3": d["score_0_3"]}] for d in ji["dimensions"]]
 
     if pre_doc:
         pre_ji = pre_doc["scores"]["job_intelligence"]
         pre_js = pre_doc["scores"]["job_search"]
         quad_series = [{"label": "Pre", "job_search": pre_js["total"], "job_intelligence": pre_ji["total"]}]
         if sameday_doc:
-            quad_series.append({"label": "Same day", "job_search": None,
+            quad_series.append({"label": "Post Survey 1", "job_search": None,
                                  "job_intelligence": sameday_doc["scores"]["job_intelligence"]["total"]})
-        quad_series.append({"label": "Week 4", "job_search": js["total"], "job_intelligence": ji["total"]})
+        quad_series.append({"label": "Post Survey 2", "job_search": js["total"], "job_intelligence": ji["total"]})
 
         for i, d in enumerate(ji["dimensions"]):
             pts = [{"label": "Pre", "score_0_3": pre_ji["dimensions"][i]["score_0_3"]}]
             if sameday_doc:
-                pts.append({"label": "Same day",
+                pts.append({"label": "Post Survey 1",
                             "score_0_3": sameday_doc["scores"]["job_intelligence"]["dimensions"][i]["score_0_3"]})
-            pts.append({"label": "Week 4", "score_0_3": d["score_0_3"]})
+            pts.append({"label": "Post Survey 2", "score_0_3": d["score_0_3"]})
             dim_points_by_dim[i] = pts
 
     dim_rows_svg = [
@@ -796,8 +796,8 @@ def _mean_dim_rows(matched, first_key, second_key):
 
 
 def build_outcome(batch, day=None):
-    """'First day' view: how the cohort moved Pre -> Same-day, for every
-    student who filled both. Same-day carries no Job-Search score, so this is
+    """'First day' view: how the cohort moved Pre -> Post Survey 1, for every
+    student who filled both. Post Survey 1 carries no Job-Search score, so this is
     a Job-Intelligence movement story -- who rose, who fell, and by how much.
 
     day: optional 'YYYY-MM-DD' restricting the analysis to the workshop group
@@ -811,9 +811,9 @@ def build_outcome(batch, day=None):
         ji_pre = m["pre"]["scores"]["job_intelligence"]["total"]
         ji_now = m["sameday"]["scores"]["job_intelligence"]["total"]
         js_pre = m["pre"]["scores"]["job_search"]["total"]
-        # Same-day asks only the Job-Intelligence items, so job search is held
+        # Post Survey 1 asks only the Job-Intelligence items, so job search is held
         # at its Pre value -- the same assumption the quadrant field chart
-        # makes. That lets the same-day role be named on the same grid.
+        # makes. That lets the Post Survey 1 role be named on the same grid.
         q_pre = scoring.quadrant(js_pre, ji_pre)
         q_now = scoring.quadrant(js_pre, ji_now)
         quad_counts_pre[q_pre] += 1
@@ -822,7 +822,7 @@ def build_outcome(batch, day=None):
                      "ji_pre": ji_pre, "ji_now": ji_now, "delta": round(ji_now - ji_pre, 1),
                      "js_pre": js_pre,
                      "quad_pre": q_pre, "quad_now": q_now, "moved": q_pre != q_now})
-        # Same-day carries no Job-Search score, so search is unchanged from Pre:
+        # Post Survey 1 carries no Job-Search score, so search is unchanged from Pre:
         # each arrow is a purely vertical Job-Intelligence move.
         field_students.append({"job_search_pre": js_pre, "ji_pre": ji_pre,
                                "job_search_w4": js_pre, "ji_w4": ji_now})
@@ -852,16 +852,16 @@ def build_outcome(batch, day=None):
         "ji_delta": (round(ji_now_mean - ji_pre_mean, 1) if sd else None),
         "best": rows[0] if rows else None,
         "rows": rows,
-        "field_svg": charts_svg.quadrant_field_svg(field_students, end_label="same day") if sd else None,
-        "bars_svg": charts_svg.diverging_bars_svg(dim_rows, span_label="pre → same day") if sd else None,
+        "field_svg": charts_svg.quadrant_field_svg(field_students, end_label="Post Survey 1") if sd else None,
+        "bars_svg": charts_svg.diverging_bars_svg(dim_rows, span_label="Pre → Post Survey 1") if sd else None,
         "slope_svg": charts_svg.slopegraph_svg(
             [{"ji_pre": r["ji_pre"], "ji_w4": r["ji_now"]} for r in rows],
-            col_labels=["Pre", "Same day"]) if sd else None,
+            col_labels=["Pre", "Post Survey 1"]) if sd else None,
     }
 
 
 def build_impact(batch):
-    """'Four weeks on' view: the full Pre -> Week-4 journey for every matched
+    """'Four weeks on' view: the full Pre -> Post Survey 2 journey for every matched
     student -- Job-Intelligence and Job-Search movement, quadrant (role)
     migrations as a from/to matrix, per-dimension change, trajectory, and the
     control-item credibility check. This is the deep-dive dashboard."""
@@ -976,7 +976,7 @@ def _admin_n_due(batch):
 
 @app.get("/admin/outcome", response_class=HTMLResponse)
 def admin_outcome(request: Request, username: str = Depends(check_admin)):
-    """First-day tab: Pre -> Same-day movement, full analysis."""
+    """First-day tab: Pre -> Post Survey 1 movement, full analysis."""
     batch = batch_from(request)
     return templates.TemplateResponse(request, "admin_outcome.html", base_ctx(
         request, batch, o=build_outcome(batch), n_due=_admin_n_due(batch),
@@ -985,7 +985,7 @@ def admin_outcome(request: Request, username: str = Depends(check_admin)):
 
 @app.get("/admin/impact", response_class=HTMLResponse)
 def admin_impact(request: Request, username: str = Depends(check_admin)):
-    """Four-weeks tab: Pre -> Week-4 journey, quadrant migrations, full analysis."""
+    """Four-weeks tab: Pre -> Post Survey 2 journey, quadrant migrations, full analysis."""
     batch = batch_from(request)
     return templates.TemplateResponse(request, "admin_impact.html", base_ctx(
         request, batch, m=build_impact(batch), n_due=_admin_n_due(batch),
@@ -1057,18 +1057,18 @@ def admin_student(request: Request, username: str = Depends(check_admin)):
                 for i, dim in enumerate(pre_ji["dimensions"]):
                     pts = [{"label": "Pre", "score_0_3": dim["score_0_3"]}]
                     if sameday and "scores" in sameday and "job_intelligence" in sameday["scores"] and "dimensions" in sameday["scores"]["job_intelligence"]:
-                        pts.append({"label": "Same day", "score_0_3": sameday["scores"]["job_intelligence"]["dimensions"][i]["score_0_3"]})
+                        pts.append({"label": "Post Survey 1", "score_0_3": sameday["scores"]["job_intelligence"]["dimensions"][i]["score_0_3"]})
                     if week4 and "scores" in week4 and "job_intelligence" in week4["scores"] and "dimensions" in week4["scores"]["job_intelligence"]:
-                        pts.append({"label": "Week 4", "score_0_3": week4["scores"]["job_intelligence"]["dimensions"][i]["score_0_3"]})
+                        pts.append({"label": "Post Survey 2", "score_0_3": week4["scores"]["job_intelligence"]["dimensions"][i]["score_0_3"]})
                     dim_svg_rows.append(charts_svg.dimension_arrow_row(dim["desc"], dim["left"], dim["right"], pts))
 
             quad_series = []
             if pre and js_pre is not None and ji_pre is not None:
                 quad_series.append({"label": "Pre", "job_search": js_pre, "job_intelligence": ji_pre})
             if sameday and "scores" in sameday and "job_intelligence" in sameday["scores"]:
-                quad_series.append({"label": "Same day", "job_search": None, "job_intelligence": sameday["scores"]["job_intelligence"]["total"]})
+                quad_series.append({"label": "Post Survey 1", "job_search": None, "job_intelligence": sameday["scores"]["job_intelligence"]["total"]})
             if week4 and "scores" in week4 and "job_search" in week4["scores"] and "job_intelligence" in week4["scores"]:
-                quad_series.append({"label": "Week 4", "job_search": week4["scores"]["job_search"]["total"], "job_intelligence": week4["scores"]["job_intelligence"]["total"]})
+                quad_series.append({"label": "Post Survey 2", "job_search": week4["scores"]["job_search"]["total"], "job_intelligence": week4["scores"]["job_intelligence"]["total"]})
 
             quad_svg = charts_svg.quadrant_svg(quad_series) if len(quad_series) >= 1 else None
 
@@ -1116,7 +1116,7 @@ async def admin_student_delete(request: Request, username: str = Depends(check_a
 # ADMIN -- GROUPS (by fill date) + time-to-fill
 # ---------------------------------------------------------------------------
 
-STAGE_LABEL = {"pre": "Pre", "post_sameday": "Same-day", "post_week4": "Week 4"}
+STAGE_LABEL = {"pre": "Pre", "post_sameday": "Post Survey 1", "post_week4": "Post Survey 2"}
 
 
 @app.get("/admin/groups", response_class=HTMLResponse)
@@ -1193,7 +1193,7 @@ async def admin_groups_delete(request: Request, username: str = Depends(check_ad
 #
 # A share is a read-only public window onto one group's first-day results:
 # where the group started (Pre), where it finished by the end of the workshop
-# day (Same-day), and every arrow in between. It carries a title the admin
+# day (Post Survey 1), and every arrow in between. It carries a title the admin
 # writes, and it never exposes email addresses -- names are optional too.
 # ---------------------------------------------------------------------------
 
@@ -1293,7 +1293,7 @@ def shared_analysis(request: Request, token: str):
 
 
 # ---------------------------------------------------------------------------
-# ADMIN -- WEEK-4 REMINDERS
+# ADMIN -- POST SURVEY 2 REMINDERS
 # ---------------------------------------------------------------------------
 
 def _reminder_rows(batch, now=None):
@@ -1373,11 +1373,11 @@ async def admin_grant_access(request: Request, username: str = Depends(check_adm
 @app.post("/admin/reminders/send")
 async def admin_reminders_send(request: Request, username: str = Depends(check_admin)):
     """
-    Sends the week-4 reminder. Two modes:
+    Sends the Post Survey 2 reminder. Two modes:
       - one student:  POST with email=<address>
       - everyone due: POST with no email
     Only students whose 30 days have elapsed and who haven't submitted
-    week-4 are ever mailed -- a single-student send is checked against the
+    Post Survey 2 are ever mailed -- a single-student send is checked against the
     same gate as the bulk one, so a stray click can't mail someone early.
     """
     form = await request.form()
@@ -1397,7 +1397,7 @@ async def admin_reminders_send(request: Request, username: str = Depends(check_a
         try:
             ok = email_utils.send_result_email(
                 row["email"], row["name"],
-                f"{settings.APP_NAME} — your 4-week check-in is open", html, None,
+                f"{settings.APP_NAME} — your Post Survey 2 is open", html, None,
             )
         except Exception as exc:                     # SMTP down, bad address, etc.
             print(f"[reminder] failed for {row['email']}: {exc}")

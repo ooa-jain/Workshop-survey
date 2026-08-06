@@ -6,7 +6,7 @@ Rules (all per-student, keyed on email + batch):
   PRE          always open. Resubmitting overwrites.
   SAME-DAY     opens the instant that student's PRE lands; closes
                SAMEDAY_WINDOW_HOURS later.
-  WEEK-4       stays locked until WEEK4_UNLOCK_DAYS after that student's PRE
+  POST SURVEY 2       stays locked until WEEK4_UNLOCK_DAYS after that student's PRE
                (default 30). Admin sends the reminder mail on/after that day;
                the mail carries a signed link. Stays open WEEK4_OPEN_DAYS.
 
@@ -31,14 +31,14 @@ STAGE_META = {
         "accent": "violet",
     },
     "post_sameday": {
-        "title": "Same day",
+        "title": "Post Survey 1",
         "sub": "End of the workshop",
         "path": "/survey/post-sameday",
         "minutes": 6,
         "accent": "coral",
     },
     "post_week4": {
-        "title": "Week 4",
+        "title": "Post Survey 2",
         "sub": "One month later",
         "path": "/survey/post-week4",
         "minutes": 7,
@@ -48,7 +48,7 @@ STAGE_META = {
 
 
 # ---------------------------------------------------------------------------
-# Signed links (used in the week-4 reminder email)
+# Signed links (used in the Post Survey 2 reminder email)
 # ---------------------------------------------------------------------------
 
 def make_token(email, batch, stage="post_week4"):
@@ -156,7 +156,7 @@ def stage_status(stage, arc, now=None, dev_mode=False):
             return {"state": "expired", "headline": "Window closed",
                     "detail": ("This one only stays open for "
                                f"{settings.SAMEDAY_WINDOW_HOURS} hours after your Pre survey. "
-                               "Skip ahead \u2014 your Week-4 survey still counts."),
+                               "Skip ahead \u2014 your Post Survey 2 still counts."),
                     "unlock_at": None, "done_at": None}
         return {"state": "open", "headline": "Open now",
                 "detail": f"Closes {closes.strftime('%d %b, %H:%M UTC')}. Takes about 6 minutes.",
@@ -165,7 +165,7 @@ def stage_status(stage, arc, now=None, dev_mode=False):
     # post_week4
     if pre.get("manual_week4_access"):
         return {"state": "open", "headline": "Unlocked by Admin",
-                "detail": "Admin granted individual access to the Week-4 survey.",
+                "detail": "Admin granted individual access to the Post Survey 2.",
                 "unlock_at": None, "done_at": None}
 
     unlock = week4_unlock_at(pre)
@@ -196,7 +196,7 @@ def full_status(arc, now=None, dev_mode=False):
 
 
 def is_due_for_week4_reminder(arc, now=None, dev_mode=False):
-    """True when: pre is in, week-4 isn't, and (unlocked by dev_mode, manual access, or elapsed 30 days)."""
+    """True when: pre is in, Post Survey 2 isn't, and (unlocked by dev_mode, manual access, or elapsed 30 days)."""
     now = now or datetime.now(timezone.utc)
     if not arc.get("pre") or arc.get("post_week4"):
         return False

@@ -89,7 +89,7 @@ def delete_responses_on_date(batch, date_str):
 
 def delete_student(email, batch):
     """Delete every response for a single student in this batch -- their Pre,
-    Same-day and Week-4 documents all at once. Used by the admin Individual
+    Post Survey 1 and Post Survey 2 documents all at once. Used by the admin Individual
     Analysis page to remove one person's data. Returns the number of documents
     removed."""
     email_norm = email.strip().lower()
@@ -180,7 +180,7 @@ def matched_students(batch):
 
 
 # ---------------------------------------------------------------------------
-# Cohort view + week-4 reminder bookkeeping
+# Cohort view + Post Survey 2 reminder bookkeeping
 # ---------------------------------------------------------------------------
 
 def cohort_arcs(batch):
@@ -202,7 +202,7 @@ def cohort_arcs(batch):
 
 
 def log_week4_reminder(email, batch, when=None):
-    """Record that a week-4 reminder mail went out, on that student's Pre doc.
+    """Record that a Post Survey 2 reminder mail went out, on that student's Pre doc.
     Keeps the count and the last-sent timestamp so the admin page can show
     'reminded 2x, last on 3 Sep' instead of re-mailing people blindly."""
     when = when or datetime.now(timezone.utc)
@@ -216,8 +216,8 @@ def log_week4_reminder(email, batch, when=None):
 def stage_count(batch, stage, day=None):
     """How many responses of one stage exist, optionally narrowed to a single
     workshop group. Membership of a group is decided by the Pre response, so a
-    same-day count for a group means 'people from that group who also filled
-    the same-day survey', whenever they filled it."""
+    Post Survey 1 count for a group means 'people from that group who also filled
+    the Post Survey 1', whenever they filled it."""
     if day is None:
         return len(all_responses(batch, stage))
     if stage == "pre":

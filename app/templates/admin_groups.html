@@ -7,7 +7,7 @@
 <header class="masthead">
   <div class="kicker">Admin &middot; {{ batch }}</div>
   <h1>Groups <em>by date</em></h1>
-  <p class="standfirst">Everyone who filled a survey is grouped by the day they submitted it. Each group shows how many did Pre, Same-day and Week&nbsp;4, how long they took, and can be deleted as a whole.</p>
+  <p class="standfirst">Everyone who filled a survey is grouped by the day they submitted it. Each group shows how many did Pre, Post Survey 1 and Post Survey 2, how long they took, and can be deleted as a whole.</p>
 </header>
 
 {{ admin_tabs('groups', batch, n_due) }}
@@ -20,7 +20,7 @@
 <!-- Overall totals -->
 <div class="hero-stat">
   <div><div class="lab">Students</div><div class="val">{{ overall.n_students }}</div></div>
-  <div><div class="lab">Pre / Same-day / Week 4</div><div class="val" style="font-size:26px">{{ overall.n_pre }} / {{ overall.n_sameday }} / {{ overall.n_week4 }}</div></div>
+  <div><div class="lab">Pre / Post Survey 1 / Post Survey 2</div><div class="val" style="font-size:26px">{{ overall.n_pre }} / {{ overall.n_sameday }} / {{ overall.n_week4 }}</div></div>
   <div><div class="lab">Total submissions</div><div class="val">{{ overall.total }}</div></div>
   <div><div class="lab">Avg time to fill</div><div class="val text">{{ overall.avg_time }}</div></div>
 </div>
@@ -40,7 +40,7 @@
       <p class="note" style="margin:0">
         {{ g.n_students }} student{{ '' if g.n_students == 1 else 's' }} &middot;
         {{ g.total }} submission{{ '' if g.total == 1 else 's' }} &middot;
-        Pre {{ g.counts.pre }} / Same-day {{ g.counts.post_sameday }} / Week&nbsp;4 {{ g.counts.post_week4 }} &middot;
+        Pre {{ g.counts.pre }} / Post Survey 1 {{ g.counts.post_sameday }} / Post Survey 2 {{ g.counts.post_week4 }} &middot;
         avg {{ g.avg_time }}
       </p>
     </div>
