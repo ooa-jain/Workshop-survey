@@ -79,10 +79,14 @@
   </div>
 </div>
 
-<!-- 05 Every student -->
-<div class="card" data-accent="violet">
+<!-- 05 Every student. Screen only: the printed PDF is a group handout and
+     doesn't need a row per person -- that's what the spreadsheet is for. -->
+<div class="card no-print" data-accent="violet">
   <div class="tab"><span class="tab-n">05</span>Every student, biggest gain first</div>
-  <p class="note" style="margin-bottom:16px">Each person's Job-Intelligence score before and after, and the role they moved from and to on the grid.</p>
+  <p class="note" style="margin-bottom:16px">Each person's Job-Intelligence score before and after, and the role they moved from and to on the grid. Not included in the PDF &mdash; download the spreadsheet for the full list.</p>
+  <p style="margin:0 0 18px">
+    <a class="btn btn-sm" href="/s/{{ token }}/students.xlsx">Download as Excel &darr;</a>
+  </p>
   <div class="tbl-scroll">
     <table class="tbl">
       <thead><tr><th>Student</th><th>From &rarr; to</th><th class="num">Before</th><th class="num">Post Survey 1</th><th class="num">Shift</th></tr></thead>

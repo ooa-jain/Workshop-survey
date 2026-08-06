@@ -3,12 +3,12 @@ import secrets
 from datetime import datetime, timezone
 
 from fastapi import FastAPI, Request, Depends, HTTPException, status
-from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, Response
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
-from . import db, scoring, charts_svg, charts_email, email_utils, eligibility
+from . import db, scoring, charts_svg, charts_email, email_utils, eligibility, exports
 from .config import settings
 
 app = FastAPI(title=settings.APP_NAME)
@@ -1208,6 +1208,25 @@ def _group_label(day):
     return datetime.strptime(day, "%Y-%m-%d").strftime("%d %b %Y")
 
 
+def _share_view(share):
+    """The analysis behind one share link, plus its per-student rows with
+    email addresses stripped and names replaced by Student 01, 02... unless
+    the admin ticked 'show student names'. Rows arrive sorted biggest gain
+    first, so the numbering reads as a leaderboard. Both the page and the
+    spreadsheet are built from this, so they can never disagree."""
+    o = build_outcome(share["batch"], day=share.get("day"))
+    show_names = share.get("show_names", True)
+    people = [
+        {
+            "who": r["name"] if show_names else f"Student {i:02d}",
+            "ji_pre": r["ji_pre"], "ji_now": r["ji_now"], "delta": r["delta"],
+            "quad_pre": r["quad_pre"], "quad_now": r["quad_now"], "moved": r["moved"],
+        }
+        for i, r in enumerate(o["rows"], start=1)
+    ]
+    return o, people
+
+
 def _decorate_share(s):
     return {
         "token": s["token"],
@@ -1270,26 +1289,33 @@ def shared_analysis(request: Request, token: str):
             base_ctx(request, settings.WORKSHOP_BATCH), status_code=404,
         )
     db.record_share_view(token)
-
-    o = build_outcome(share["batch"], day=share.get("day"))
-    show_names = share.get("show_names", True)
-    # Rebuild the per-student rows without email addresses -- and without
-    # names as well, unless the admin ticked the box. Rows are already sorted
-    # biggest gain first, so the numbering reads as a leaderboard.
-    people = [
-        {
-            "who": r["name"] if show_names else f"Student {i:02d}",
-            "ji_pre": r["ji_pre"], "ji_now": r["ji_now"], "delta": r["delta"],
-            "quad_pre": r["quad_pre"], "quad_now": r["quad_now"], "moved": r["moved"],
-        }
-        for i, r in enumerate(o["rows"], start=1)
-    ]
+    o, people = _share_view(share)
 
     return templates.TemplateResponse(request, "shared_analysis.html", base_ctx(
-        request, share["batch"], o=o, people=people,
+        request, share["batch"], o=o, people=people, token=token,
         share_title=share["title"], share_note=share.get("note", ""),
         group_label=_group_label(share.get("day")),
     ))
+
+
+@app.get("/s/{token}/students.xlsx")
+def shared_analysis_xlsx(token: str):
+    """The per-student table as a spreadsheet. Deliberately built from the same
+    anonymised rows the page renders, so the download can never reveal a name
+    the page itself hides, and carries no email addresses either way."""
+    share = db.get_share(token)
+    if not share:
+        raise HTTPException(status_code=404, detail="This shared analysis link is not valid.")
+
+    o, people = _share_view(share)
+    data = exports.shared_analysis_xlsx(
+        share["title"], _group_label(share.get("day")), o, people)
+    filename = exports.safe_filename(share["title"])
+    return Response(
+        content=data,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
 
 
 # ---------------------------------------------------------------------------

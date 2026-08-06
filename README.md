@@ -149,7 +149,20 @@ link shows its view count so you can tell whether it was actually opened.
 a print stylesheet applied — dark stat tiles keep their ink, cards are never
 sliced across a page break, and the file is named after the share title. It is
 the browser's own PDF writer, not a server-side render, so no extra system
-dependency is needed on the VPS.
+dependency is needed on the VPS. The PDF deliberately stops after the group
+charts: the per-student table is screen-only, since a handout for a class
+doesn't need a row per person.
+
+**Download as Excel**, next to that table, serves the per-student rows as a
+real `.xlsx` from `/s/<token>/students.xlsx` — a *Students* sheet (rank, name,
+role at Pre, role at Post Survey 1, both scores, shift) and a *Summary* sheet
+(headline means and the quadrant population). It is built from exactly the same
+rows the page renders, so an anonymised share produces an anonymised
+spreadsheet, and no email address is ever written to either sheet.
+
+This is the one feature that added a dependency — `openpyxl`, a pure-Python
+wheel with no system libraries. Run `pip install -r requirements.txt` on the
+VPS when you deploy it, or the shared pages will 500 on import.
 
 `BASE_URL` in `.env` is what the copyable link is built from — if it's wrong,
 the links you hand out point at the wrong host.
