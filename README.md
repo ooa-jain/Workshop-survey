@@ -29,6 +29,7 @@ pip install -r requirements.txt
 pip install mongomock  # test-only, not in requirements.txt
 python3 tests/test_scoring.py   # pure scoring logic, 11 checks
 python3 tests/smoke_test.py     # full app flow against an in-memory Mongo, 25 checks
+python3 tests/test_submit_errors.py  # dead mail server / blank answer / crash on submit
 ```
 
 To actually run it locally against a real (or Atlas) Mongo:
@@ -246,6 +247,38 @@ grain, and a different ink colour per section (violet, coral, aqua,
 tangerine) so moving through the form visibly changes the page. Colours
 are CSS custom properties keyed on `data-accent`, so re-skinning is a
 handful of lines at the top of `style.css`.
+
+## When a submit goes wrong
+
+Submitting is the one moment a student cannot repeat -- Pre is write-once,
+and the Post Survey 1 window closes the same night -- so nothing after the
+answers are stored is allowed to take that page away from them.
+
+**The result email is sent after the page, not before it.** Building the
+PNG charts and talking to the SMTP server used to happen inline, on the
+event loop, while the student waited: a mail server that was slow, rate-
+limiting a classroom of submissions, or simply down turned a *saved*
+submission into an error page. That work is now a Starlette background
+task (`email_utils.background_send`), which runs on a worker thread once
+the response has gone out, and logs `[email] <stage> failed:` with a
+traceback if the mail never leaves. The student's answers and their
+on-screen result are unaffected either way. `SMTP_TIMEOUT` (default 20s)
+caps how long one send can hang.
+
+Because those charts are now drawn on background threads, `charts_email.py`
+uses matplotlib's `Figure` API directly rather than `pyplot` -- pyplot's
+global figure registry is not thread-safe, and two students submitting at
+the same moment would otherwise draw into each other's chart.
+
+**Errors are pages, not JSON.** A blank answer that slips past the
+per-step validation used to come back as a raw `{"detail": "Missing
+required field: Scenario B3"}`. Two handlers in `main.py` now render
+`error.html` instead -- naming the question that was left blank, with a
+link back to the form -- and a catch-all handler turns any unexpected
+crash into a readable page while logging the traceback to
+`/var/log/job-intelligence-survey/error.log`. Anything under `/api/`,
+along with the admin's 401 challenge, keeps its original machine-readable
+behaviour, so `stepper.js` and the browser auth prompt are untouched.
 
 ## What's server-computed vs. what isn't
 

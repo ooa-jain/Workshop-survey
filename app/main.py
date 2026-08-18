@@ -1,5 +1,6 @@
 import random
 import secrets
+import traceback
 from datetime import datetime, timezone
 
 from fastapi import FastAPI, Request, Depends, HTTPException, status
@@ -7,6 +8,8 @@ from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, Resp
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
+from fastapi.exception_handlers import http_exception_handler
+from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from . import db, scoring, charts_svg, charts_email, email_utils, eligibility, exports
 from .config import settings
@@ -172,6 +175,67 @@ def fmt_duration(seconds):
 @app.on_event("startup")
 def _startup():
     db.ensure_indexes()
+
+
+def _wants_html(request):
+    """API routes and fetch() callers want JSON; a student who just pressed
+    Submit on a form wants a page they can read."""
+    if request.url.path.startswith("/api/"):
+        return False
+    accept = request.headers.get("accept", "")
+    if "text/html" in accept:
+        return True
+    return "application/json" not in accept
+
+
+def _error_page(request, status_code, headline, detail, advice, kicker="Something went wrong"):
+    return templates.TemplateResponse(
+        request, "error.html",
+        base_ctx(request, batch_from(request), headline=headline, detail=detail,
+                 advice=advice, kicker=kicker),
+        status_code=status_code,
+    )
+
+
+@app.exception_handler(StarletteHTTPException)
+async def http_error_handler(request: Request, exc: StarletteHTTPException):
+    """A missing answer used to come back as a wall of raw JSON. Students get
+    a page that names what is missing instead; the admin's browser prompt for
+    401s and every /api/ route keep their original behaviour."""
+    if exc.status_code == 401 or not _wants_html(request):
+        return await http_exception_handler(request, exc)
+
+    detail = exc.detail if isinstance(exc.detail, str) else "That request could not be completed."
+    if exc.status_code == 404:
+        return _error_page(request, 404, "Page <em>not found</em>", detail,
+                           "Check the link you followed, or start again from the survey home page.",
+                           kicker="Not found")
+    if str(detail).startswith("Missing required field"):
+        field = str(detail).split(":", 1)[1].strip()
+        return _error_page(
+            request, exc.status_code, "One answer is <em>missing</em>",
+            f"{field} was left blank, so the form could not be submitted.",
+            "Go back, answer that question, and press Submit again. Nothing else you typed is lost.",
+            kicker="Incomplete form",
+        )
+    return _error_page(request, exc.status_code, "That didn\u2019t go through", detail,
+                       "Go back and try again.")
+
+
+@app.exception_handler(Exception)
+async def unhandled_error_handler(request: Request, exc: Exception):
+    """Last resort. Logs the traceback for the admin and shows the student a
+    plain-English page rather than a bare 'Internal Server Error'."""
+    print(f"[error] {request.method} {request.url.path} failed:")
+    traceback.print_exc()
+    if not _wants_html(request):
+        return JSONResponse({"detail": "Internal server error"}, status_code=500)
+    return _error_page(
+        request, 500, "Something broke <em>on our side</em>",
+        "The server hit an unexpected error while handling that request.",
+        "Please try pressing Submit once more. If it happens again, tell the workshop team \u2014 "
+        "the error has been logged with the exact time.",
+    )
 
 
 def require(form, key, label=None):
@@ -482,7 +546,8 @@ async def pre_submit(request: Request):
     }
     db.upsert_response(email, name, "pre", batch, raw, scores, password_hash=pwd_hash, password_salt=pwd_salt)
 
-    _send_pre_email(name, email, ji, js, control, quad)
+    mail = email_utils.background_send("pre", _send_pre_email,
+                                       name, email, ji, js, control, quad)
 
     return templates.TemplateResponse(request, "result_pre.html", base_ctx(
         request, batch, name=name, email=email,
@@ -496,7 +561,7 @@ async def pre_submit(request: Request):
         quad_svg=charts_svg.quadrant_svg(
             [{"label": "Pre", "job_search": js["total"], "job_intelligence": ji["total"]}]),
         next_steps=next_steps_for(email, batch),
-    ))
+    ), background=mail)
 
 
 def _send_pre_email(name, email, ji, js, control, quad):
@@ -595,7 +660,8 @@ async def sameday_submit(request: Request):
             dim_rows_svg.append(charts_svg.dimension_arrow_row(dim["desc"], dim["left"], dim["right"], pts))
             dim_rows_png.append({"desc": dim["desc"], "left": dim["left"], "right": dim["right"], "points": pts})
 
-    _send_sameday_email(name, email, ji, quad_series, dim_rows_png)
+    mail = email_utils.background_send("post_sameday", _send_sameday_email,
+                                       name, email, ji, quad_series, dim_rows_png)
 
     return templates.TemplateResponse(request, "result_sameday.html", base_ctx(
         request, batch, name=name, email=email, ji=ji,
@@ -604,7 +670,7 @@ async def sameday_submit(request: Request):
         dim_svg_rows=dim_rows_svg,
         quad_svg=charts_svg.quadrant_svg(quad_series) if quad_series else None,
         next_steps=next_steps_for(email, batch),
-    ))
+    ), background=mail)
 
 
 def _send_sameday_email(name, email, ji, quad_series, dim_rows_png):
@@ -733,7 +799,8 @@ async def week4_submit(request: Request):
         for i, d in enumerate(ji["dimensions"])
     ]
 
-    _send_week4_email(name, email, ji, js, quad, quad_series, dim_rows_png, scores)
+    mail = email_utils.background_send("post_week4", _send_week4_email,
+                                       name, email, ji, js, quad, quad_series, dim_rows_png, scores)
 
     return templates.TemplateResponse(request, "result_week4.html", base_ctx(
         request, batch, name=name, email=email, ji=ji, js=js,
@@ -743,7 +810,7 @@ async def week4_submit(request: Request):
         dim_svg_rows=dim_rows_svg,
         quad_svg=charts_svg.quadrant_svg(quad_series),
         next_steps=next_steps_for(email, batch),
-    ))
+    ), background=mail)
 
 
 def _send_week4_email(name, email, ji, js, quad, quad_series, dim_rows_png, scores):
