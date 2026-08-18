@@ -11,7 +11,8 @@ from fastapi.templating import Jinja2Templates
 from fastapi.exception_handlers import http_exception_handler
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
-from . import db, scoring, charts_svg, charts_email, email_utils, eligibility, exports
+from . import db, scoring, charts_svg, charts_email, email_utils, eligibility, exports, questions
+from .questions import SCENARIOS_PRE_WEEK4, SCENARIOS_SAMEDAY
 from .config import settings
 
 app = FastAPI(title=settings.APP_NAME)
@@ -19,123 +20,6 @@ app.mount("/static", StaticFiles(directory="app/static"), name="static")
 templates = Jinja2Templates(directory="app/templates")
 
 security = HTTPBasic()
-
-
-SCENARIOS_PRE_WEEK4 = [
-    {
-        "name": "b1",
-        "num": "B1",
-        "text": "A friend tells you they want to become a Business Analyst. What is the most useful first question to ask them?",
-        "options": [
-            ("a", "Which companies near you are actively hiring for that role this year?"),
-            ("b", "What skills and tools do most Business Analyst job postings ask for?"),
-            ("c", "How is that role likely to look different five years from now?"),
-            ("d", "What does a Business Analyst actually spend a typical week doing, and why?"),
-        ]
-    },
-    {
-        "name": "b2",
-        "num": "B2",
-        "text": "Two candidates apply for the same analyst role with identical degrees. Who is a hiring manager most likely to pick?",
-        "options": [
-            ("a", "The one whose university grades and transcript are the strongest"),
-            ("b", "The one who lists the most tools and software on their resume"),
-            ("c", "The one with the largest portfolio of finished personal projects"),
-            ("d", "The one who can explain why a promising approach was wrong"),
-        ]
-    },
-    {
-        "name": "b3",
-        "num": "B3",
-        "text": "A company automates most of its routine content writing using AI. What new problem is this most likely to create?",
-        "options": [
-            ("a", "Not much changes, the work just gets done more cheaply"),
-            ("b", "Most of the writing team will eventually be let go"),
-            ("c", "They'll publish faster than anyone has time to check it"),
-            ("d", "Someone still has to answer for what gets published and why"),
-        ]
-    },
-    {
-        "name": "b4",
-        "num": "B4",
-        "text": "You want to stand out for roles in the sports industry. Which is the strongest position to build?",
-        "options": [
-            ("a", "Learn a broad mix of sports-industry basics so you can adapt anywhere"),
-            ("b", "Earn the most well-known certification that the sports industry recognises"),
-            ("c", "Go deep on one in-demand skill, such as sports data analysis"),
-            ("d", "Pair your sports knowledge with a second skill few others also have"),
-        ]
-    },
-    {
-        "name": "b5",
-        "num": "B5",
-        "text": "You're preparing for an interview and you use AI to help. Which use gives you the biggest real advantage?",
-        "options": [
-            ("a", "Ask it to draft full answers for you to learn by heart"),
-            ("b", "Ask it for a list of typical questions you might be asked"),
-            ("c", "Ask it to pull together background information about the company"),
-            ("d", "Ask it to challenge your answers until you find where they break"),
-        ]
-    }
-]
-
-SCENARIOS_SAMEDAY = [
-    {
-        "name": "b1",
-        "num": "B1",
-        "text": "A friend tells you they want to become a Digital Marketer. What is the most useful first question to ask them?",
-        "options": [
-            ("a", "Which companies in your city are hiring for that role now?"),
-            ("b", "What tools and platforms do most digital marketing job ads list?"),
-            ("c", "Which parts of digital marketing are likely to look different soon?"),
-            ("d", "What does a digital marketer actually spend most of their week doing?"),
-        ]
-    },
-    {
-        "name": "b2",
-        "num": "B2",
-        "text": "Two candidates apply for the same product role with identical qualifications. Who is more valuable to the company?",
-        "options": [
-            ("a", "The one whose university transcript shows the higher marks"),
-            ("b", "The one who has hands-on experience with the most product tools"),
-            ("c", "The one who already has more shipped side projects to show"),
-            ("d", "The one who can defend a tough call they made"),
-        ]
-    },
-    {
-        "name": "b3",
-        "num": "B3",
-        "text": "A hospital starts using AI to draft patient discharge summaries. What new problem does this most likely create?",
-        "options": [
-            ("a", "Nothing much really changes, it just saves doctors some time"),
-            ("b", "Junior doctors will simply have less writing work to do"),
-            ("c", "Summaries pile up faster than staff can double-check them all"),
-            ("d", "Someone still has to answer for a mistake in a summary"),
-        ]
-    },
-    {
-        "name": "b4",
-        "num": "B4",
-        "text": "You want to stand out in the finance industry. Which is the strongest position to build?",
-        "options": [
-            ("a", "Get a broad working knowledge of most areas in finance"),
-            ("b", "Earn the single most respected certification finance professionals hold"),
-            ("c", "Go deep on one specific skill, such as financial modelling work"),
-            ("d", "Pair core finance skills with a second field few others know"),
-        ]
-    },
-    {
-        "name": "b5",
-        "num": "B5",
-        "text": "You're writing a business proposal and you use AI to help. Which use gives you the biggest real advantage?",
-        "options": [
-            ("a", "Have it write the whole proposal for you to send"),
-            ("b", "Have it fix the grammar, spelling and formatting for you"),
-            ("c", "Have it draft a rough version for you to rewrite"),
-            ("d", "Have it poke holes in your logic until something breaks"),
-        ]
-    }
-]
 
 
 def prep_scenarios(scenarios):
@@ -1211,6 +1095,7 @@ def admin_groups(request: Request, username: str = Depends(check_admin)):
             people.append({
                 "name": d["name"], "email": d["email"],
                 "stage": STAGE_LABEL.get(d["stage"], d["stage"]),
+                "stage_key": d["stage"],
                 "time": fmt_duration(fs),
                 "at": d["submitted_at"].strftime("%H:%M"),
             })
@@ -1252,6 +1137,213 @@ async def admin_groups_delete(request: Request, username: str = Depends(check_ad
     date = require(form, "date", "Date")
     deleted = db.delete_responses_on_date(batch, date)
     return RedirectResponse(f"/admin/groups?batch={batch}&deleted={deleted}", status_code=303)
+
+
+# ---------------------------------------------------------------------------
+# ADMIN -- ALL DATA
+#
+# Everything every student typed, question by question. The analysis tabs
+# answer "what did this cohort do"; this one answers "what exactly did this
+# person put", which is the question you have when someone queries their
+# result or you are checking a number by hand.
+# ---------------------------------------------------------------------------
+
+DATA_PAGE_SIZE = 100
+
+
+@app.get("/admin/data", response_class=HTMLResponse)
+def admin_data(request: Request, username: str = Depends(check_admin)):
+    """Every submission in the batch, newest first, searchable by name or
+    email. One row per submission, not per student -- a student who did all
+    three surveys is three rows."""
+    batch = batch_from(request)
+    query = (request.query_params.get("q") or "").strip()
+    stage_filter = (request.query_params.get("stage") or "").strip()
+
+    docs = db.all_responses(batch)
+    if stage_filter:
+        docs = [d for d in docs if d["stage"] == stage_filter]
+    if query:
+        needle = query.lower()
+        docs = [d for d in docs
+                if needle in d.get("name", "").lower() or needle in d.get("email", "").lower()]
+    docs.sort(key=lambda d: d["submitted_at"], reverse=True)
+
+    total = len(docs)
+    try:
+        page = max(1, int(request.query_params.get("page", "1")))
+    except ValueError:
+        page = 1
+    pages = max(1, (total + DATA_PAGE_SIZE - 1) // DATA_PAGE_SIZE)
+    page = min(page, pages)
+    window = docs[(page - 1) * DATA_PAGE_SIZE: page * DATA_PAGE_SIZE]
+
+    rows = []
+    for d in window:
+        sc = d.get("scores", {})
+        rows.append({
+            "name": d.get("name", ""), "email": d.get("email", ""),
+            "stage": d["stage"], "stage_label": STAGE_LABEL.get(d["stage"], d["stage"]),
+            "at": d["submitted_at"].strftime("%d %b %Y, %H:%M"),
+            "time": fmt_duration(fill_seconds(d)),
+            "ji": (sc.get("job_intelligence") or {}).get("total"),
+            "js": (sc.get("job_search") or {}).get("total"),
+            "quadrant": sc.get("quadrant"),
+            "n_answered": sum(1 for a in questions.answers_for(d) if a["answered"]),
+            "n_questions": len(questions.QUESTIONS.get(d["stage"], [])),
+            "resubmissions": max(0, (d.get("submission_count") or 1) - 1),
+        })
+
+    return templates.TemplateResponse(request, "admin_data.html", base_ctx(
+        request, batch, rows=rows, q=query, stage_filter=stage_filter,
+        total=total, page=page, pages=pages, page_size=DATA_PAGE_SIZE,
+        stage_labels=STAGE_LABEL, n_due=_admin_n_due(batch),
+    ))
+
+
+@app.get("/admin/data/response", response_class=HTMLResponse)
+def admin_data_response(request: Request, username: str = Depends(check_admin)):
+    """One submission in full: every question on that survey with what this
+    student answered, in the order they were asked."""
+    batch = batch_from(request)
+    email = (request.query_params.get("email") or "").strip()
+    stage = (request.query_params.get("stage") or "").strip()
+
+    if stage not in STAGE_LABEL:
+        raise HTTPException(status_code=404, detail="Unknown survey stage.")
+    doc = db.get_response(email, stage, batch) if email else None
+    if not doc:
+        raise HTTPException(status_code=404, detail="No such submission in this batch.")
+
+    arc = db.get_student_arc(email, batch)
+    return templates.TemplateResponse(request, "admin_response.html", base_ctx(
+        request, batch, doc=doc, email=email, stage=stage,
+        stage_label=STAGE_LABEL[stage],
+        answers=questions.answers_for(doc),
+        extras=questions.extra_fields(doc),
+        submitted_at=doc["submitted_at"].strftime("%d %b %Y, %H:%M"),
+        first_submitted_at=(doc.get("first_submitted_at").strftime("%d %b %Y, %H:%M")
+                            if doc.get("first_submitted_at") else None),
+        resubmissions=max(0, (doc.get("submission_count") or 1) - 1),
+        fill_time=fmt_duration(fill_seconds(doc)),
+        other_stages=[(st, STAGE_LABEL[st]) for st in ("pre", "post_sameday", "post_week4")
+                      if st in arc and st != stage],
+        n_due=_admin_n_due(batch),
+    ))
+
+
+@app.get("/admin/data/answers.csv")
+def admin_answers_csv(request: Request, username: str = Depends(check_admin)):
+    """Every answer to every question, one row per submission.
+
+    The Download CSV on the other tabs carries the computed scores; this one
+    carries what the students actually typed, with the questions as column
+    headers, for anyone who wants to do their own analysis in a spreadsheet.
+    """
+    import csv
+    import io
+
+    batch = batch_from(request)
+    stage = (request.query_params.get("stage") or "").strip()
+    if stage and stage not in STAGE_LABEL:
+        raise HTTPException(status_code=404, detail="Unknown survey stage.")
+
+    stages = [stage] if stage else ["pre", "post_sameday", "post_week4"]
+    buf = io.StringIO()
+    writer = csv.writer(buf)
+
+    for st in stages:
+        docs = [d for d in db.all_responses(batch, st)]
+        docs.sort(key=lambda d: d["submitted_at"], reverse=True)
+        qs = questions.QUESTIONS.get(st, [])
+
+        writer.writerow([STAGE_LABEL[st]])
+        writer.writerow(["name", "email", "submitted_at", "seconds_to_fill", "times_filled"]
+                        + [f"{q['num']} {q['text']}" for q in qs])
+        for d in docs:
+            answers = {a["num"]: a for a in questions.answers_for(d)}
+            writer.writerow([
+                d.get("name", ""), d.get("email", ""),
+                d["submitted_at"].strftime("%Y-%m-%d %H:%M:%S"),
+                fill_seconds(d) if fill_seconds(d) is not None else "",
+                d.get("submission_count") or 1,
+            ] + [(answers.get(q["num"], {}).get("answer") or "") for q in qs])
+        writer.writerow([])
+
+    return Response(
+        content=buf.getvalue(),
+        media_type="text/csv",
+        headers={"Content-Disposition": f'attachment; filename="answers-{batch}.csv"'},
+    )
+
+
+# ---------------------------------------------------------------------------
+# ADMIN -- DUPLICATES
+#
+# Two different things get called a duplicate, and they need separating.
+#
+# One person filling the same survey twice under the same address is not a
+# duplicate in the data: the unique index means the second sitting overwrote
+# the first, so the recent one is already the only one. It is still worth
+# seeing that it happened, which is what submission_count records.
+#
+# One person entering under two different addresses IS a duplicate, and no
+# index can catch it -- to Mongo those are two students. That inflates every
+# headcount until somebody resolves it, which is what this page is for.
+# ---------------------------------------------------------------------------
+
+@app.get("/admin/duplicates", response_class=HTMLResponse)
+def admin_duplicates(request: Request, username: str = Depends(check_admin)):
+    batch = batch_from(request)
+    clusters = db.duplicate_students(batch)
+
+    view = []
+    for c in clusters:
+        entries = []
+        for i, e in enumerate(c["entries"]):
+            entries.append({
+                "name": e["name"], "email": e["email"],
+                "stages": [STAGE_LABEL[st] for st in ("pre", "post_sameday", "post_week4")
+                           if st in e["stages"]],
+                "n_stages": len(e["stages"]),
+                "last_at": e["last_at"].strftime("%d %b %Y, %H:%M"),
+                "keep": i == 0,                      # newest first, so [0] is the survivor
+            })
+        view.append({
+            "reason": c["reason"], "key": c["key"], "entries": entries,
+            "keep_email": c["entries"][0]["email"],
+            "drop_emails": [e["email"] for e in c["entries"][1:]],
+            "n_drop_responses": sum(len(e["stages"]) for e in c["entries"][1:]),
+        })
+
+    resubmitted = db.resubmitted_students(batch)
+    for r in resubmitted:
+        r["stage"] = STAGE_LABEL.get(r["stage"], r["stage"])
+
+    return templates.TemplateResponse(request, "admin_duplicates.html", base_ctx(
+        request, batch, clusters=view, resubmitted=resubmitted,
+        n_due=_admin_n_due(batch),
+        resolved=request.query_params.get("resolved"),
+    ))
+
+
+@app.post("/admin/duplicates/resolve")
+async def admin_duplicates_resolve(request: Request, username: str = Depends(check_admin)):
+    """Keep the most recent entry in one cluster and delete the older ones.
+
+    Only ever deletes the addresses named in the form, so what gets removed
+    is exactly what the page listed under them -- a cluster that changed
+    since the page was rendered cannot take an unlisted student with it.
+    """
+    form = await request.form()
+    batch = form.get("batch", settings.WORKSHOP_BATCH)
+    keep = require(form, "keep", "Address to keep")
+    drop = [e for e in form.getlist("drop") if e.strip() and e.strip().lower() != keep.strip().lower()]
+
+    deleted = 0
+    for email in drop:
+        deleted += db.delete_student(email, batch)
+    return RedirectResponse(f"/admin/duplicates?batch={batch}&resolved={deleted}", status_code=303)
 
 
 # ---------------------------------------------------------------------------

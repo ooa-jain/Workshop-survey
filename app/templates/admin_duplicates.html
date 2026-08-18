@@ -1,0 +1,88 @@
+{% extends "base.html" %}
+{% from "_macros.html" import admin_tabs with context %}
+{% block title %}Duplicates &middot; {{ app_name }}{% endblock %}
+{% block accent %}tang{% endblock %}
+{% block wrapclass %} wide{% endblock %}
+{% block content %}
+<header class="masthead">
+  <div class="kicker">Admin &middot; {{ batch }}</div>
+  <h1>Duplicate <em>entries</em></h1>
+  <p class="standfirst">People who appear to have filled the surveys twice under two different email addresses. Each one is counted twice in every headcount until it's resolved.</p>
+</header>
+
+{{ admin_tabs('duplicates', batch, n_due, clusters|length) }}
+
+{% if resolved is not none and resolved != '' %}
+  {% if resolved|int > 0 %}<div class="ok-banner">Removed {{ resolved }} superseded response{{ '' if resolved|int == 1 else 's' }}. The most recent entry was kept.</div>
+  {% else %}<div class="error-banner">Nothing was removed &mdash; those entries were already gone.</div>{% endif %}
+{% endif %}
+
+{% if not clusters %}
+<div class="card flat">
+  <div class="tab"><span class="tab-n">&check;</span>No duplicates found</div>
+  <p class="note" style="margin-bottom:0">No two students in this batch share a name or a matching email address.</p>
+</div>
+{% endif %}
+
+{% for c in clusters %}
+<div class="card" data-accent="{{ ['tang','coral','violet','aqua'][loop.index0 % 4] }}">
+  <div class="tab"><span class="tab-n">{{ "%02d"|format(loop.index) }}</span>{{ c.entries[0].name }}</div>
+  <p class="note" style="margin:0 0 14px 0">
+    Matched on {% if c.reason == 'name' %}the same name{% else %}the same email address, ignoring dots and +tags{% endif %}.
+    {{ c.entries|length }} separate entries.
+  </p>
+
+  <div class="tbl-scroll">
+    <table class="tbl">
+      <thead><tr><th>Name</th><th>Email</th><th>Surveys filled</th><th class="num">Last submitted</th><th></th></tr></thead>
+      <tbody>
+        {% for e in c.entries %}
+        <tr>
+          <td class="who">{{ e.name }}</td>
+          <td>{{ e.email }}</td>
+          <td>{{ e.stages|join(', ') if e.stages else '—' }}</td>
+          <td class="num">{{ e.last_at }}</td>
+          <td class="num">{% if e.keep %}<b>Most recent</b>{% else %}<span class="note" style="margin:0">Superseded</span>{% endif %}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <form method="post" action="/admin/duplicates/resolve" style="margin:16px 0 0 0"
+        onsubmit="return confirm('Delete {{ c.n_drop_responses }} response(s) belonging to {{ c.drop_emails|join(', ') }}, keeping {{ c.keep_email }}? This cannot be undone.');">
+    <input type="hidden" name="batch" value="{{ batch }}">
+    <input type="hidden" name="keep" value="{{ c.keep_email }}">
+    {% for email in c.drop_emails %}<input type="hidden" name="drop" value="{{ email }}">{% endfor %}
+    <p class="note" style="margin:0 0 10px 0">Keeps <b>{{ c.keep_email }}</b> and deletes the {{ c.n_drop_responses }} response{{ '' if c.n_drop_responses == 1 else 's' }} under {{ c.drop_emails|join(', ') }}.</p>
+    <button class="btn btn-ghost btn-sm" type="submit" style="border-color:var(--warn); color:var(--warn)">Keep most recent, delete the rest</button>
+  </form>
+</div>
+{% endfor %}
+
+<div class="card flat">
+  <div class="tab"><span class="tab-n">!</span>Filled the same survey twice</div>
+  <p class="note">
+    A student who sat the same survey twice under <em>one</em> address is not a duplicate in the data: the second sitting overwrote the first, so the most recent answers are already the only ones stored. Listed here so you can see it happened. Pre is write-once, so it never appears below.
+  </p>
+  {% if not resubmitted %}
+  <p class="note" style="margin-bottom:0">Nobody has refilled a survey in this batch.</p>
+  {% else %}
+  <div class="tbl-scroll">
+    <table class="tbl">
+      <thead><tr><th>Student</th><th>Survey</th><th class="num">Times filled</th><th class="num">Kept (latest)</th></tr></thead>
+      <tbody>
+        {% for r in resubmitted %}
+        <tr>
+          <td class="who">{{ r.name }}<span>{{ r.email }}</span></td>
+          <td>{{ r.stage }}</td>
+          <td class="num">{{ r.count }}</td>
+          <td class="num">{{ r.last_at.strftime('%d %b %Y, %H:%M') }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

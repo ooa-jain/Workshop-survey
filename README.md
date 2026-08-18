@@ -31,6 +31,8 @@ python3 tests/test_scoring.py   # pure scoring logic, 11 checks
 python3 tests/smoke_test.py     # full app flow against an in-memory Mongo, 25 checks
 python3 tests/test_submit_errors.py  # dead mail server / blank answer / crash on submit
 python3 tests/test_bulk_email.py     # a 500-student mail run: one connection, bad addresses
+python3 tests/test_admin_data.py     # the All data and Duplicates tabs
+python3 tests/test_questions.py      # the question registry still matches the forms
 ```
 
 To actually run it locally against a real (or Atlas) Mongo:
@@ -120,6 +122,57 @@ Each submission immediately renders an on-screen result (the arrow-track
 dimension chart plus the quadrant position) and emails the same result as
 PNG charts embedded via Content-ID, so it displays correctly even in
 Outlook desktop rather than depending on inline SVG support.
+
+## Reading the raw answers (`/admin/data`)
+
+The analysis tabs answer *what did this cohort do*. **All data** answers
+*what exactly did this person put*, which is the question you have when a
+student queries their result or you're checking a number by hand.
+
+It lists every submission in the batch, newest first, searchable by name or
+email and filterable by survey. Opening a row shows that survey question by
+question -- the real question text, and the option label the student
+picked rather than the code it's stored as (`Under 10 minutes`, not
+`under_10`). Unanswered questions are shown as gaps rather than skipped, and
+anything on the document that no longer maps to a question on the current
+form is listed at the bottom instead of being silently dropped. Student rows
+on the **Groups** tab and the Individual Analysis page link straight into it.
+
+**Download every answer (CSV)** on that tab is the whole thing as a
+spreadsheet: one row per submission, one column per question, questions as
+headers. (The existing Download CSV carries the computed scores; this one
+carries the answers.)
+
+Question text lives in `app/questions.py`, which is also what the forms
+import for their section-B scenarios. `tests/test_questions.py` walks the
+three form templates and fails if a field or an option value exists in one
+and not the other, so a reworded question can't quietly leave admin showing
+a blank column.
+
+## Duplicates (`/admin/duplicates`)
+
+Two different things get called a duplicate, and they need separating.
+
+**Filling the same survey twice under one address is not a duplicate in the
+data.** The unique index on (email, stage, batch) means the second sitting
+overwrote the first, so the most recent answers are already the only ones
+stored -- and Pre is write-once, so it can't happen there at all. It's still
+worth seeing that it happened, so `submission_count` records it and the
+bottom of the page lists it. Nothing to clean up.
+
+**The same person entering under two different addresses is a duplicate,
+and no index can catch it.** To Mongo those are two students, and they
+inflate every headcount, every mean and every group total until somebody
+resolves it. The page clusters entries that share a normalised name, or an
+email differing only by dots or a `+tag`, shows every entry with the surveys
+it holds, and marks the newest as the one to keep.
+
+Resolving is a deliberate button, never automatic: it deletes the responses
+under the older addresses and keeps the most recent entry. The confirmation
+names exactly which addresses go, the form carries those addresses so a
+cluster that changed since the page was rendered can't take an unlisted
+student with it, and the deletion is irreversible -- there's no undo, so the
+page tells you the count before you press it.
 
 ## Sharing a group's results (`/admin/share`)
 

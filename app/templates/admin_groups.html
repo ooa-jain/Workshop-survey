@@ -7,7 +7,7 @@
 <header class="masthead">
   <div class="kicker">Admin &middot; {{ batch }}</div>
   <h1>Groups <em>by date</em></h1>
-  <p class="standfirst">Everyone who filled a survey is grouped by the day they submitted it. Each group shows how many did Pre, Post Survey 1 and Post Survey 2, how long they took, and can be deleted as a whole.</p>
+  <p class="standfirst">Everyone who filled a survey is grouped by the day they submitted it. Each group shows how many did Pre, Post Survey 1 and Post Survey 2, how long they took, and can be deleted as a whole. Open any student to read every answer they gave.</p>
 </header>
 
 {{ admin_tabs('groups', batch, n_due) }}
@@ -54,7 +54,7 @@
 
   <div class="tbl-scroll" style="margin-top:16px">
     <table class="tbl">
-      <thead><tr><th>Student</th><th class="num">Survey</th><th class="num">Time</th><th class="num">At</th></tr></thead>
+      <thead><tr><th>Student</th><th class="num">Survey</th><th class="num">Time</th><th class="num">At</th><th></th></tr></thead>
       <tbody>
         {% for p in g.people %}
         <tr>
@@ -62,6 +62,7 @@
           <td class="num">{{ p.stage }}</td>
           <td class="num">{{ p.time }}</td>
           <td class="num">{{ p.at }}</td>
+          <td class="num"><a class="btn btn-ghost btn-sm" href="/admin/data/response?batch={{ batch }}&amp;email={{ p.email|urlencode }}&amp;stage={{ p.stage_key }}">Answers &rarr;</a></td>
         </tr>
         {% endfor %}
       </tbody>

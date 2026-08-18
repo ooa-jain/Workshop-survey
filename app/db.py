@@ -51,9 +51,16 @@ def upsert_response(email, name, stage, batch, raw_answers, scores, password_has
         doc["password_hash"] = password_hash
         doc["password_salt"] = password_salt
 
+    # A resubmission overwrites, but the fact that it happened is kept:
+    # submission_count is what the admin Duplicates tab reads to show that a
+    # student filled the same survey more than once. first_submitted_at is
+    # set once and never moved, so the original sitting is still visible
+    # after an overwrite.
     coll.update_one(
         {"email_norm": email_norm, "stage": stage, "batch": batch},
-        {"$set": doc},
+        {"$set": doc,
+         "$inc": {"submission_count": 1},
+         "$setOnInsert": {"first_submitted_at": doc["submitted_at"]}},
         upsert=True,
     )
     return doc
@@ -300,3 +307,85 @@ def set_manual_week4_access(email: str, batch: str, enabled: bool) -> bool:
     )
     return enabled
 
+
+
+def _name_key(name):
+    """A name reduced to what two records would share if they are the same
+    person typed twice: case, punctuation and extra spaces all removed."""
+    return " ".join("".join(c for c in (name or "").lower() if c.isalnum() or c.isspace()).split())
+
+
+def _email_key(email):
+    """The identity part of an address -- dots and +tags dropped, so
+    first.last@x and firstlast+jobs@x collapse together the way the mail
+    provider itself treats them."""
+    email = (email or "").strip().lower()
+    local, _, domain = email.partition("@")
+    local = local.split("+", 1)[0].replace(".", "")
+    return f"{local}@{domain}"
+
+
+def duplicate_students(batch):
+    """
+    Students who look like they filled the surveys twice under two different
+    email addresses.
+
+    The unique index means one document per (student, stage, batch), so the
+    same address filling twice overwrites rather than duplicating -- that
+    case shows up as submission_count instead. What this finds is the other
+    case: one person entering under two addresses, which no index can catch.
+
+    Two records are treated as the same person when they share a normalised
+    name, or an email that differs only by dots or a +tag. Each returned
+    cluster is ordered newest first, so entries[0] is the one to keep and
+    everything after it is superseded.
+    """
+    by_student = {}
+    for d in all_responses(batch):
+        s = by_student.setdefault(d["email_norm"], {
+            "email": d["email"], "email_norm": d["email_norm"], "name": d["name"],
+            "stages": {}, "last_at": d["submitted_at"], "resubmissions": 0,
+        })
+        s["stages"][d["stage"]] = d
+        s["last_at"] = max(s["last_at"], d["submitted_at"])
+        s["resubmissions"] += max(0, (d.get("submission_count") or 1) - 1)
+        if d["stage"] == "pre":
+            s["email"], s["name"] = d["email"], d["name"]
+
+    clusters = {}
+    for s in by_student.values():
+        clusters.setdefault(("name", _name_key(s["name"])), []).append(s)
+        clusters.setdefault(("email", _email_key(s["email"])), []).append(s)
+
+    seen, out = set(), []
+    for (kind, key), members in clusters.items():
+        if len(members) < 2:
+            continue
+        signature = tuple(sorted(m["email_norm"] for m in members))
+        if signature in seen:
+            continue
+        seen.add(signature)
+        members.sort(key=lambda m: m["last_at"], reverse=True)
+        out.append({"reason": kind, "key": key, "entries": members})
+
+    out.sort(key=lambda c: c["entries"][0]["last_at"], reverse=True)
+    return out
+
+
+def resubmitted_students(batch):
+    """Students who filled the same survey more than once under the same
+    address. The later answers overwrote the earlier ones -- which is the
+    intended behaviour -- so this is a record of it having happened, not
+    something to clean up."""
+    out = []
+    for d in all_responses(batch):
+        count = d.get("submission_count") or 1
+        if count > 1:
+            out.append({
+                "email": d["email"], "name": d["name"], "stage": d["stage"],
+                "count": count,
+                "first_at": d.get("first_submitted_at"),
+                "last_at": d["submitted_at"],
+            })
+    out.sort(key=lambda r: r["last_at"], reverse=True)
+    return out

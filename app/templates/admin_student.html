@@ -164,6 +164,13 @@
 <!-- Qualitative Responses Breakdown Card -->
 <div class="card" data-accent="tang" style="margin-bottom:24px;">
   <div class="tab"><span class="tab-n">03</span>Qualitative text responses & feedback</div>
+  <p class="note">A selection. To read every question and answer on a survey, open it in full:
+    {% for st, label in [('pre', 'Pre'), ('post_sameday', 'Post Survey 1'), ('post_week4', 'Post Survey 2')] %}
+      {% if (st == 'pre' and student.pre) or (st == 'post_sameday' and student.sameday) or (st == 'post_week4' and student.week4) %}
+      <a href="/admin/data/response?batch={{ batch }}&amp;email={{ student.email|urlencode }}&amp;stage={{ st }}">{{ label }}</a>{% if not loop.last %} &middot; {% endif %}
+      {% endif %}
+    {% endfor %}
+  </p>
   
   {% if student.pre %}
     <div style="margin-bottom:20px; padding-bottom:16px; border-bottom:1px solid var(--rule,#D8CEBC);">

@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+{% from "_macros.html" import admin_tabs with context %}
+{% block title %}All data &middot; {{ app_name }}{% endblock %}
+{% block accent %}aqua{% endblock %}
+{% block wrapclass %} wide{% endblock %}
+{% block content %}
+<header class="masthead">
+  <div class="kicker">Admin &middot; {{ batch }}</div>
+  <h1>All <em>data</em></h1>
+  <p class="standfirst">Every submission in this batch, newest first. Open any row to read that survey question by question, exactly as the student answered it.</p>
+</header>
+
+{{ admin_tabs('data', batch, n_due) }}
+
+<div class="card flat">
+  <form method="get" action="/admin/data" style="display:flex; gap:12px; flex-wrap:wrap; align-items:flex-end; margin:0">
+    <input type="hidden" name="batch" value="{{ batch }}">
+    <div style="flex:1 1 260px">
+      <label for="q" class="lab" style="display:block; margin-bottom:6px">Search by name or email</label>
+      <input type="search" id="q" name="q" value="{{ q }}" placeholder="e.g. priya, or @jainuniversity" style="width:100%">
+    </div>
+    <div>
+      <label for="stage" class="lab" style="display:block; margin-bottom:6px">Survey</label>
+      <select id="stage" name="stage">
+        <option value="">All three</option>
+        {% for key, label in stage_labels.items() %}
+        <option value="{{ key }}" {% if stage_filter == key %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <button class="btn btn-sm" type="submit">Search</button>
+    {% if q or stage_filter %}<a class="btn btn-ghost btn-sm" href="/admin/data?batch={{ batch }}">Clear</a>{% endif %}
+    <a class="btn btn-ghost btn-sm" href="/admin/data/answers.csv?batch={{ batch }}{% if stage_filter %}&amp;stage={{ stage_filter }}{% endif %}">Download every answer (CSV)</a>
+  </form>
+</div>
+
+<p class="note">
+  {{ total }} submission{{ '' if total == 1 else 's' }}{% if q or stage_filter %} matching{% endif %}.
+  {% if pages > 1 %}Page {{ page }} of {{ pages }}, {{ page_size }} per page.{% endif %}
+</p>
+
+{% if not rows %}
+<div class="card flat">
+  <div class="tab"><span class="tab-n">!</span>Nothing to show</div>
+  <p class="note" style="margin-bottom:0">{% if q or stage_filter %}No submission matches that search.{% else %}No surveys have been submitted in this batch yet.{% endif %}</p>
+</div>
+{% else %}
+<div class="card">
+  <div class="tbl-scroll">
+    <table class="tbl">
+      <thead><tr>
+        <th>Student</th><th>Survey</th><th class="num">Answered</th>
+        <th class="num">JI</th><th class="num">Search</th><th>Quadrant</th>
+        <th class="num">Time</th><th class="num">Submitted</th><th></th>
+      </tr></thead>
+      <tbody>
+        {% for r in rows %}
+        <tr>
+          <td class="who">{{ r.name }}<span>{{ r.email }}</span></td>
+          <td>{{ r.stage_label }}{% if r.resubmissions %} <span class="badge" title="This student sat the same survey more than once; the answers stored are from the most recent sitting">filled {{ r.resubmissions + 1 }}&times;</span>{% endif %}</td>
+          <td class="num">{{ r.n_answered }}/{{ r.n_questions }}</td>
+          <td class="num">{{ r.ji if r.ji is not none else '—' }}</td>
+          <td class="num">{{ r.js if r.js is not none else '—' }}</td>
+          <td>{{ r.quadrant or '—' }}</td>
+          <td class="num">{{ r.time }}</td>
+          <td class="num">{{ r.at }}</td>
+          <td class="num"><a class="btn btn-ghost btn-sm" href="/admin/data/response?batch={{ batch }}&amp;email={{ r.email|urlencode }}&amp;stage={{ r.stage }}">Open &rarr;</a></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  {% if pages > 1 %}
+  <div style="margin-top:16px; display:flex; gap:12px; align-items:center; flex-wrap:wrap">
+    {% set qs = 'batch=' ~ batch ~ '&q=' ~ q ~ '&stage=' ~ stage_filter %}
+    {% if page > 1 %}<a class="btn btn-ghost btn-sm" href="/admin/data?{{ qs }}&amp;page={{ page - 1 }}">&larr; Newer</a>{% endif %}
+    <span class="note" style="margin:0">Page {{ page }} of {{ pages }}</span>
+    {% if page < pages %}<a class="btn btn-ghost btn-sm" href="/admin/data?{{ qs }}&amp;page={{ page + 1 }}">Older &rarr;</a>{% endif %}
+  </div>
+  {% endif %}
+</div>
+{% endif %}
+{% endblock %}

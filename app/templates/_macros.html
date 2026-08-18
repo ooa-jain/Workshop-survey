@@ -177,13 +177,15 @@
 
 {# The admin navigation tab bar, shared across every admin page so the tabs
    stay identical everywhere. `active` is the current page's key. #}
-{% macro admin_tabs(active, batch, n_due=0) -%}
+{% macro admin_tabs(active, batch, n_due=0, n_dupes=0) -%}
 <div class="tabs">
   <a {% if active == 'results' %}class="on"{% endif %} href="/admin?batch={{ batch }}">Results</a>
   <a {% if active == 'outcome' %}class="on"{% endif %} href="/admin/outcome?batch={{ batch }}">Outcome &middot; Post Survey 1</a>
   <a {% if active == 'impact' %}class="on"{% endif %} href="/admin/impact?batch={{ batch }}">Impact &middot; Post Survey 2</a>
   <a {% if active == 'student' %}class="on"{% endif %} href="/admin/student?batch={{ batch }}">Individual Analysis</a>
   <a {% if active == 'groups' %}class="on"{% endif %} href="/admin/groups?batch={{ batch }}">Groups</a>
+  <a {% if active == 'data' %}class="on"{% endif %} href="/admin/data?batch={{ batch }}">All data</a>
+  <a {% if active == 'duplicates' %}class="on"{% endif %} href="/admin/duplicates?batch={{ batch }}">Duplicates{% if n_dupes %}<span class="badge">{{ n_dupes }}</span>{% endif %}</a>
   <a {% if active == 'share' %}class="on"{% endif %} href="/admin/share?batch={{ batch }}">Share analysis</a>
   <a {% if active == 'reminders' %}class="on"{% endif %} href="/admin/reminders?batch={{ batch }}">Post Survey 2 reminders{% if n_due %}<span class="badge">{{ n_due }} due</span>{% endif %}</a>
   <a href="/admin/export.csv?batch={{ batch }}">Download CSV</a>

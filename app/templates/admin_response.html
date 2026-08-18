@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% from "_macros.html" import admin_tabs with context %}
+{% block title %}{{ doc.name }} &middot; {{ stage_label }} &middot; {{ app_name }}{% endblock %}
+{% block accent %}aqua{% endblock %}
+{% block wrapclass %} wide{% endblock %}
+{% block content %}
+<header class="masthead">
+  <div class="kicker">Admin &middot; {{ stage_label }}</div>
+  <h1>{{ doc.name }}</h1>
+  <p class="standfirst">{{ doc.email }} &middot; submitted {{ submitted_at }}{% if fill_time and fill_time != '—' %} &middot; took {{ fill_time }}{% endif %}</p>
+</header>
+
+{{ admin_tabs('data', batch, n_due) }}
+
+<div style="display:flex; gap:12px; flex-wrap:wrap; margin-bottom:18px">
+  <a class="btn btn-ghost btn-sm" href="/admin/data?batch={{ batch }}">&larr; All data</a>
+  <a class="btn btn-ghost btn-sm" href="/admin/student?batch={{ batch }}&amp;email={{ email|urlencode }}">Their analysis &rarr;</a>
+  {% for st, label in other_stages %}
+  <a class="btn btn-ghost btn-sm" href="/admin/data/response?batch={{ batch }}&amp;email={{ email|urlencode }}&amp;stage={{ st }}">{{ label }} answers &rarr;</a>
+  {% endfor %}
+</div>
+
+{% if resubmissions %}
+<div class="ok-banner">{{ stage_label }} was filled {{ resubmissions + 1 }} times by this student{% if first_submitted_at %}, first on {{ first_submitted_at }}{% endif %}. The answers below are the most recent set &mdash; each sitting replaced the one before it.</div>
+{% endif %}
+
+<div class="card">
+  <div class="tab"><span class="tab-n">Q</span>Every answer</div>
+  <div class="tbl-scroll">
+    <table class="tbl">
+      <thead><tr><th style="width:70px">&nbsp;</th><th>Question</th><th style="width:38%">Answer</th></tr></thead>
+      <tbody>
+        {% for a in answers %}
+        <tr>
+          <td class="num"><b>{{ a.num }}</b></td>
+          <td>{{ a.text }}</td>
+          <td>{% if a.answered %}{{ a.answer }}{% else %}<span class="note" style="margin:0">Not answered</span>{% endif %}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+{% if extras %}
+<div class="card flat">
+  <div class="tab"><span class="tab-n">+</span>Other stored fields</div>
+  <p class="note">Answers on this document that no longer match a question on the current form &mdash; kept here so nothing the student submitted is invisible.</p>
+  <div class="tbl-scroll">
+    <table class="tbl">
+      <thead><tr><th>Field</th><th>Value</th></tr></thead>
+      <tbody>
+        {% for key, value in extras %}
+        <tr><td class="num"><b>{{ key }}</b></td><td>{{ value }}</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
+{% endblock %}
