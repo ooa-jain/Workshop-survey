@@ -12,9 +12,9 @@
 {% from "_macros.html" import admin_tabs with context %}
 {{ admin_tabs('reminders', batch, due|length) }}
 
-{% if sent is not none and sent != '' %}
-  {% if sent|int > 0 %}<div class="ok-banner">Sent {{ sent }} reminder{{ '' if sent|int == 1 else 's' }}.{% if failed|int %} {{ failed }} failed &mdash; check the service log.{% endif %}</div>
-  {% else %}<div class="error-banner">Nothing sent.{% if failed|int %} {{ failed }} failed &mdash; check the service log.{% else %} Nobody matched.{% endif %}</div>{% endif %}
+{% if queued is not none and queued != '' %}
+  {% if queued|int > 0 %}<div class="ok-banner">Sending {{ queued }} reminder{{ '' if queued|int == 1 else 's' }} now. They go out in the background &mdash; refresh this page to watch the counts below fill in, and check the service log for any address that bounced.</div>
+  {% else %}<div class="error-banner">Nothing sent &mdash; nobody matched.</div>{% endif %}
 {% endif %}
 
 {% if not email_live %}

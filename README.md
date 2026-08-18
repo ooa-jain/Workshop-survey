@@ -30,6 +30,7 @@ pip install mongomock  # test-only, not in requirements.txt
 python3 tests/test_scoring.py   # pure scoring logic, 11 checks
 python3 tests/smoke_test.py     # full app flow against an in-memory Mongo, 25 checks
 python3 tests/test_submit_errors.py  # dead mail server / blank answer / crash on submit
+python3 tests/test_bulk_email.py     # a 500-student mail run: one connection, bad addresses
 ```
 
 To actually run it locally against a real (or Atlas) Mongo:
@@ -257,18 +258,36 @@ answers are stored is allowed to take that page away from them.
 **The result email is sent after the page, not before it.** Building the
 PNG charts and talking to the SMTP server used to happen inline, on the
 event loop, while the student waited: a mail server that was slow, rate-
-limiting a classroom of submissions, or simply down turned a *saved*
-submission into an error page. That work is now a Starlette background
-task (`email_utils.background_send`), which runs on a worker thread once
-the response has gone out, and logs `[email] <stage> failed:` with a
-traceback if the mail never leaves. The student's answers and their
-on-screen result are unaffected either way. `SMTP_TIMEOUT` (default 20s)
-caps how long one send can hang.
+limiting a cohort of submissions, or simply down turned a *saved*
+submission into an error page. `email_utils.queue_send` now hands that
+work to a small background thread pool and returns immediately, logging
+`[email] <stage> failed:` with a traceback if the mail never leaves. The
+student's answers and their on-screen result are unaffected either way.
+`SMTP_TIMEOUT` (default 20s) caps how long one send can hang.
+
+The pool is deliberately small -- `EMAIL_WORKERS`, default 4 per worker
+process. Rendering the charts is CPU work holding the GIL, so an unbounded
+fan-out would have hundreds of threads drawing PNGs while other students
+are still waiting for their result page. A handful of mail threads means a
+backlog drains a little later, which nobody notices, rather than the site
+slowing down, which everybody does.
 
 Because those charts are now drawn on background threads, `charts_email.py`
 uses matplotlib's `Figure` API directly rather than `pyplot` -- pyplot's
 global figure registry is not thread-safe, and two students submitting at
 the same moment would otherwise draw into each other's chart.
+
+**The reminder run is backgrounded too, down one SMTP connection.**
+`POST /admin/reminders/send` used to open a fresh authenticated connection
+per student and send the lot inline; at 500 students that is both what tips
+a provider into rate-limiting and a request that runs far past gunicorn's
+timeout, leaving the admin on a dead page with no idea how far it got. The
+page now comes straight back saying how many are going out, and
+`email_utils.send_many` works through them on one connection, recording
+each send against that student's Pre document *as it lands* -- so
+refreshing the page is an accurate picture of where the run has reached. A
+refused address is logged and skipped; a connection the provider drops
+mid-run is re-established once.
 
 **Errors are pages, not JSON.** A blank answer that slips past the
 per-step validation used to come back as a raw `{"detail": "Missing
@@ -279,6 +298,39 @@ crash into a readable page while logging the traceback to
 `/var/log/job-intelligence-survey/error.log`. Anything under `/api/`,
 along with the admin's 401 challenge, keeps its original machine-readable
 behaviour, so `stepper.js` and the browser auth prompt are untouched.
+
+## Running this for 500+ students
+
+The load that matters is not the total, it's that a cohort submits inside
+the same ten minutes at the end of a session.
+
+**Sizing.** `--workers` in the systemd unit should be `(2 x nproc) + 1`;
+check `nproc` on the VPS rather than trusting the 5 in the committed file.
+Nothing slow happens inside a request any more -- mail and chart rendering
+are on the background pool -- so each worker turns submissions over
+quickly.
+
+**The real ceiling is your mail provider, not this app.** 500 students x
+three surveys is 1500+ emails, plus reminders. A Gmail app password caps
+out around 500 recipients/day (2000 on Workspace), which a single cohort
+will exhaust: the app will keep serving result pages perfectly while every
+send is refused and logged. If you are running at this size, use a
+transactional provider (SES, SendGrid, Postmark) and check the day's
+`[email]` lines in the service log after a session:
+
+```bash
+journalctl -u job-intelligence-survey --since today | grep '^\[email\]'
+```
+
+If a provider objects to the number of simultaneous connections rather than
+the daily total, lower `EMAIL_WORKERS` to 2.
+
+**What is not a bottleneck.** Mongo holds one document per student per
+stage -- 500 students is 1500 documents, and the admin analysis pages read
+the whole batch into memory to compute their charts, which at that size is
+milliseconds. The unique index on (email, stage, batch) means a double-tap
+on Submit overwrites rather than duplicating, so a cohort refreshing
+impatiently cannot inflate the numbers.
 
 ## What's server-computed vs. what isn't
 

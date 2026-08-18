@@ -546,8 +546,7 @@ async def pre_submit(request: Request):
     }
     db.upsert_response(email, name, "pre", batch, raw, scores, password_hash=pwd_hash, password_salt=pwd_salt)
 
-    mail = email_utils.background_send("pre", _send_pre_email,
-                                       name, email, ji, js, control, quad)
+    email_utils.queue_send("pre", _send_pre_email, name, email, ji, js, control, quad)
 
     return templates.TemplateResponse(request, "result_pre.html", base_ctx(
         request, batch, name=name, email=email,
@@ -561,7 +560,7 @@ async def pre_submit(request: Request):
         quad_svg=charts_svg.quadrant_svg(
             [{"label": "Pre", "job_search": js["total"], "job_intelligence": ji["total"]}]),
         next_steps=next_steps_for(email, batch),
-    ), background=mail)
+    ))
 
 
 def _send_pre_email(name, email, ji, js, control, quad):
@@ -660,8 +659,8 @@ async def sameday_submit(request: Request):
             dim_rows_svg.append(charts_svg.dimension_arrow_row(dim["desc"], dim["left"], dim["right"], pts))
             dim_rows_png.append({"desc": dim["desc"], "left": dim["left"], "right": dim["right"], "points": pts})
 
-    mail = email_utils.background_send("post_sameday", _send_sameday_email,
-                                       name, email, ji, quad_series, dim_rows_png)
+    email_utils.queue_send("post_sameday", _send_sameday_email,
+                           name, email, ji, quad_series, dim_rows_png)
 
     return templates.TemplateResponse(request, "result_sameday.html", base_ctx(
         request, batch, name=name, email=email, ji=ji,
@@ -670,7 +669,7 @@ async def sameday_submit(request: Request):
         dim_svg_rows=dim_rows_svg,
         quad_svg=charts_svg.quadrant_svg(quad_series) if quad_series else None,
         next_steps=next_steps_for(email, batch),
-    ), background=mail)
+    ))
 
 
 def _send_sameday_email(name, email, ji, quad_series, dim_rows_png):
@@ -799,8 +798,8 @@ async def week4_submit(request: Request):
         for i, d in enumerate(ji["dimensions"])
     ]
 
-    mail = email_utils.background_send("post_week4", _send_week4_email,
-                                       name, email, ji, js, quad, quad_series, dim_rows_png, scores)
+    email_utils.queue_send("post_week4", _send_week4_email,
+                           name, email, ji, js, quad, quad_series, dim_rows_png, scores)
 
     return templates.TemplateResponse(request, "result_week4.html", base_ctx(
         request, batch, name=name, email=email, ji=ji, js=js,
@@ -810,7 +809,7 @@ async def week4_submit(request: Request):
         dim_svg_rows=dim_rows_svg,
         quad_svg=charts_svg.quadrant_svg(quad_series),
         next_steps=next_steps_for(email, batch),
-    ), background=mail)
+    ))
 
 
 def _send_week4_email(name, email, ji, js, quad, quad_series, dim_rows_png, scores):
@@ -1438,8 +1437,7 @@ def admin_reminders(request: Request, username: str = Depends(check_admin)):
         open_days=settings.WEEK4_OPEN_DAYS,
         email_live=settings.EMAIL_ENABLED and bool(settings.SMTP_HOST),
         dev_mode=dev_mode,
-        sent=request.query_params.get("sent"),
-        failed=request.query_params.get("failed"),
+        queued=request.query_params.get("queued"),
     ))
 
 
@@ -1480,29 +1478,31 @@ async def admin_reminders_send(request: Request, username: str = Depends(check_a
     due, _waiting, _complete = _reminder_rows(batch)
     targets = [r for r in due if r["email"].lower() == one_email.lower()] if one_email else due
 
-    sent = failed = 0
+    # The mail itself goes out in the background, down a single SMTP
+    # connection. A cohort of 500 sent inline would take the request far past
+    # gunicorn's timeout and leave the admin looking at a dead page with no
+    # way to tell how far it got. Instead the page comes straight back and
+    # the table fills in as the run progresses -- every successful send is
+    # recorded on that student's Pre document the moment it lands, so a
+    # refresh is an accurate picture of where the run has reached.
+    subject = f"{settings.APP_NAME} \u2014 your Post Survey 2 is open"
+    items = []
     for row in targets:
         html = templates.get_template("email_week4_reminder.html").render(
             app_name=settings.APP_NAME, name=row["name"], link=row["link"],
             status_url=eligibility.status_link(row["email"], batch),
             open_days=settings.WEEK4_OPEN_DAYS,
         )
-        try:
-            ok = email_utils.send_result_email(
-                row["email"], row["name"],
-                f"{settings.APP_NAME} — your Post Survey 2 is open", html, None,
-            )
-        except Exception as exc:                     # SMTP down, bad address, etc.
-            print(f"[reminder] failed for {row['email']}: {exc}")
-            ok = False
-        if ok:
-            db.log_week4_reminder(row["email"], batch)
-            sent += 1
-        else:
-            failed += 1
+        items.append((row["email"], row["name"], subject, html))
+
+    if items:
+        email_utils.queue_send(
+            "week4-reminders", email_utils.send_many, "week4-reminder", items,
+            on_sent=lambda addr: db.log_week4_reminder(addr, batch),
+        )
 
     return RedirectResponse(
-        f"/admin/reminders?batch={batch}&sent={sent}&failed={failed}",
+        f"/admin/reminders?batch={batch}&queued={len(items)}",
         status_code=303,
     )
 
