@@ -50,7 +50,7 @@ def _autosize(ws, widths):
         ws.column_dimensions[get_column_letter(i)].width = w
 
 
-def shared_analysis_xlsx(share_title, group_label, o, people):
+def shared_analysis_xlsx(share_title, group_label, o, people, window_label=""):
     """
     share_title / group_label: strings shown on the shared page.
     o:       the build_outcome() dict.
@@ -66,7 +66,10 @@ def shared_analysis_xlsx(share_title, group_label, o, people):
 
     ws["A1"] = share_title
     ws["A1"].font = TITLE_FONT
-    ws["A2"] = f"{group_label} — Pre → Post Survey 1"
+    scope = f"{group_label} — Pre → Post Survey 1"
+    if window_label:
+        scope += f" — counting only students who filled {window_label}"
+    ws["A2"] = scope
     ws["A2"].font = Font(italic=True, size=10)
     ws["A3"] = "Job Intelligence is scored 0–100. Shift is Post Survey 1 minus Pre."
     ws["A3"].font = Font(size=10, color="FF6B6377")

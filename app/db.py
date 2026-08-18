@@ -2,6 +2,7 @@ from datetime import datetime, timezone
 
 from pymongo import MongoClient, ASCENDING
 
+from . import localtime
 from .config import settings
 
 _client = None
@@ -121,9 +122,10 @@ def all_responses(batch, stage=None):
 
 
 def day_of(doc):
-    """The calendar day (UTC, 'YYYY-MM-DD') a response was submitted on.
-    A workshop group is identified by the day its Pre surveys were filled."""
-    return doc["submitted_at"].strftime("%Y-%m-%d")
+    """The calendar day ('YYYY-MM-DD', local -- see app/localtime.py) a
+    response was submitted on. A workshop group is identified by the day its
+    Pre surveys were filled, and a workshop day is a local day."""
+    return localtime.local_day(doc["submitted_at"])
 
 
 def pre_groups(batch):
@@ -144,27 +146,87 @@ def pre_groups(batch):
     ]
 
 
-def matched_sameday(batch, day=None):
+def matched_sameday(batch, day=None, window=None):
     """Students with both a 'pre' and a 'post_sameday' submission -- the set
     the admin 'Outcome (first day)' analysis is built from, capturing how the
     cohort moved by the end of the workshop day.
 
     day: optional 'YYYY-MM-DD'. When given, only students whose Pre was
     submitted on that day are included, so one workshop group can be analysed
-    (and shared) on its own."""
+    (and shared) on its own.
+
+    window: optional time-of-day filter, see time_window(). A student whose
+    Pre or Post Survey 1 falls outside its window is left out entirely --
+    which is the point of it: a cohort that sat the workshop in the morning
+    and a handful who filled both surveys over lunch are not the same group,
+    and averaging them together hides the result.
+    """
+    window = window or time_window()
     pre = {d["email_norm"]: d for d in all_responses(batch, "pre")
-           if day is None or day_of(d) == day}
+           if (day is None or day_of(d) == day) and window.accepts_pre(d)}
     sameday = {d["email_norm"]: d for d in all_responses(batch, "post_sameday")}
     out = []
     for email_norm, pre_doc in pre.items():
-        if email_norm in sameday:
+        post_doc = sameday.get(email_norm)
+        if post_doc is not None and window.accepts_post(post_doc):
             out.append({
                 "email": pre_doc["email"],
                 "name": pre_doc["name"],
                 "pre": pre_doc,
-                "sameday": sameday[email_norm],
+                "sameday": post_doc,
             })
     return out
+
+
+class TimeWindow:
+    """When the Pre and the Post had to be filled for a student to count.
+
+    Empty bounds mean no bound, so an unset window accepts everybody and
+    every existing share keeps behaving exactly as it did.
+    """
+
+    def __init__(self, pre_from=None, pre_to=None, post_from=None, post_to=None):
+        self.pre_from = localtime.parse_hhmm(pre_from)
+        self.pre_to = localtime.parse_hhmm(pre_to)
+        self.post_from = localtime.parse_hhmm(post_from)
+        self.post_to = localtime.parse_hhmm(post_to)
+
+    @property
+    def active(self):
+        return any((self.pre_from, self.pre_to, self.post_from, self.post_to))
+
+    def accepts_pre(self, doc):
+        return localtime.in_window(doc["submitted_at"], self.pre_from, self.pre_to)
+
+    def accepts_post(self, doc):
+        return localtime.in_window(doc["submitted_at"], self.post_from, self.post_to)
+
+    @property
+    def pre_label(self):
+        return localtime.window_label(self.pre_from, self.pre_to)
+
+    @property
+    def post_label(self):
+        return localtime.window_label(self.post_from, self.post_to)
+
+    def as_dict(self):
+        """The bounds as they were typed, for storing on a share."""
+        def hhmm(t):
+            return t.strftime("%H:%M") if t else ""
+        return {"pre_from": hhmm(self.pre_from), "pre_to": hhmm(self.pre_to),
+                "post_from": hhmm(self.post_from), "post_to": hhmm(self.post_to)}
+
+
+def time_window(pre_from=None, pre_to=None, post_from=None, post_to=None):
+    return TimeWindow(pre_from, pre_to, post_from, post_to)
+
+
+def window_from(source):
+    """A TimeWindow out of a dict-ish thing -- a share document, or a
+    request's query params."""
+    source = source or {}
+    get = source.get
+    return TimeWindow(get("pre_from"), get("pre_to"), get("post_from"), get("post_to"))
 
 
 def matched_students(batch):
@@ -241,9 +303,12 @@ def shares_collection():
     return get_db()["shared_analyses"]
 
 
-def create_share(token, batch, day, title, note="", show_names=True):
+def create_share(token, batch, day, title, note="", show_names=True, window=None):
     """Store one shareable analysis. day=None shares the whole batch; a
-    'YYYY-MM-DD' day shares that one workshop group."""
+    'YYYY-MM-DD' day shares that one workshop group.
+
+    The time window is stored on the share, not applied once at creation, so
+    the link keeps meaning the same thing as more students submit."""
     doc = {
         "token": token,
         "batch": batch,
@@ -254,6 +319,7 @@ def create_share(token, batch, day, title, note="", show_names=True):
         "created_at": datetime.now(timezone.utc),
         "views": 0,
     }
+    doc.update((window or TimeWindow()).as_dict())
     shares_collection().insert_one(doc)
     return doc
 

@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% from "_macros.html" import admin_tabs with context %}
+{% from "_macros.html" import admin_tabs, time_window_fields with context %}
 {% block title %}Outcome &middot; Post Survey 1 &middot; {{ app_name }}{% endblock %}
 {% block accent %}tang{% endblock %}
 {% block wrapclass %} wide{% endblock %}
@@ -11,6 +11,34 @@
 </header>
 
 {{ admin_tabs('outcome', batch, n_due) }}
+
+<div class="card flat">
+  <div class="tab"><span class="tab-n">&#9662;</span>Narrow this analysis</div>
+  <form method="get" action="/admin/outcome">
+    <input type="hidden" name="batch" value="{{ batch }}">
+    <div class="q" style="max-width:420px">
+      <label for="day">Group</label>
+      <select id="day" name="day">
+        <option value="">All groups &mdash; everyone in {{ batch }}</option>
+        {% for g in groups %}
+        <option value="{{ g.date }}" {% if day == g.date %}selected{% endif %}>{{ g.label }} &mdash; {{ g.n_pre }} student{{ '' if g.n_pre == 1 else 's' }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    {{ time_window_fields(window, tz) }}
+    <div style="margin-top:16px; display:flex; gap:12px; flex-wrap:wrap">
+      <button class="btn btn-sm" type="submit">Apply</button>
+      {% if day or o.window_active %}<a class="btn btn-ghost btn-sm" href="/admin/outcome?batch={{ batch }}">Clear</a>{% endif %}
+    </div>
+  </form>
+</div>
+
+{% if o.window_active %}
+<div class="ok-banner">
+  Time filter on{% if o.window_pre_label %} &mdash; Pre {{ o.window_pre_label }}{% endif %}{% if o.window_post_label %}, Post Survey 1 {{ o.window_post_label }}{% endif %}.
+  {% if o.n_excluded %}{{ o.n_excluded }} of {{ o.n_unfiltered }} matched student{{ '' if o.n_unfiltered == 1 else 's' }} excluded; {{ o.n }} counted below.{% else %}Nobody was excluded &mdash; all {{ o.n }} matched students fall inside it.{% endif %}
+</div>
+{% endif %}
 
 {% if not o.has_data %}
 <div class="card flat">

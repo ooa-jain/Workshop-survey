@@ -33,6 +33,7 @@ python3 tests/test_submit_errors.py  # dead mail server / blank answer / crash o
 python3 tests/test_bulk_email.py     # a 500-student mail run: one connection, bad addresses
 python3 tests/test_admin_data.py     # the All data and Duplicates tabs
 python3 tests/test_questions.py      # the question registry still matches the forms
+python3 tests/test_time_filter.py    # filtering Pre/Post by local time of day
 ```
 
 To actually run it locally against a real (or Atlas) Mongo:
@@ -173,6 +174,37 @@ names exactly which addresses go, the form carries those addresses so a
 cluster that changed since the page was rendered can't take an unlisted
 student with it, and the deletion is irreversible -- there's no undo, so the
 page tells you the count before you press it.
+
+## Times, and filtering an analysis by them (`TIMEZONE`)
+
+Every timestamp is stored in UTC, which is right. They used to be *displayed*
+in UTC too, which was not: a submission at 10:52 in Bangalore showed as 05:22
+in admin. Everything an admin reads or types is now in `TIMEZONE` (any IANA
+name, default `Asia/Kolkata`), including which calendar day a submission
+counts as — so a workshop group is a local day, not a UTC one.
+
+**Expect the times in admin to move by your UTC offset after this deploy.**
+Nothing about the stored data changes; the same instants are simply being
+read in the zone they happened in.
+
+That is what makes the time filter usable. **Outcome · Post Survey 1** and the
+share-creation form both offer four optional fields: the window the Pre had to
+be filled in, and the window the Post had to be filled in. A student is counted
+only when *both* their surveys fall inside their windows — so a cohort that sat
+the workshop in the morning can be analysed on its own, without the couple of
+dozen who filled Pre and Post back-to-back over the afternoon dragging the
+means toward zero movement.
+
+Blank means no bound, so `Pre 09:00–10:00` with the Post fields empty is a
+valid filter, and a window whose end is before its start (`22:00–02:00`) wraps
+past midnight. The Outcome tab always says what the filter did — "4 of 14
+matched students excluded; 10 counted below" — so a smaller cohort is never
+silently smaller.
+
+A share stores its window rather than applying it once, so the link keeps
+meaning the same thing as more students submit, and the public page and the
+spreadsheet both state the filter under the title. Links created before this
+existed carry no window and behave exactly as they always did.
 
 ## Sharing a group's results (`/admin/share`)
 

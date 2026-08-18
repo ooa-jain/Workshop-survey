@@ -41,6 +41,11 @@ class Settings:
     BASE_URL = os.environ.get("BASE_URL", "https://job-intelligence.juooa.cloud")
     SESSION_SECRET = os.environ.get("SESSION_SECRET", "change-me-too")
 
+    # Where the workshop happens. Timestamps are stored in UTC; everything an
+    # admin reads or types -- the times in tables, the group day, the time-of-day
+    # filters -- is in this zone. Any IANA name, e.g. Asia/Kolkata.
+    TIMEZONE = os.environ.get("TIMEZONE", "Asia/Kolkata")
+
     # Workshop metadata -- shown on forms, used to tag submissions by cohort/batch
     WORKSHOP_BATCH = os.environ.get("WORKSHOP_BATCH", "2026-final-year")
 

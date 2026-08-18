@@ -11,13 +11,17 @@ from fastapi.templating import Jinja2Templates
 from fastapi.exception_handlers import http_exception_handler
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
-from . import db, scoring, charts_svg, charts_email, email_utils, eligibility, exports, questions
+from . import db, scoring, charts_svg, charts_email, email_utils, eligibility, exports, questions, localtime
 from .questions import SCENARIOS_PRE_WEEK4, SCENARIOS_SAMEDAY
 from .config import settings
 
 app = FastAPI(title=settings.APP_NAME)
 app.mount("/static", StaticFiles(directory="app/static"), name="static")
 templates = Jinja2Templates(directory="app/templates")
+# Timestamps are stored in UTC and read in the workshop's own timezone. Every
+# template renders a time through this, so none of them can accidentally show
+# the stored UTC hour -- see app/localtime.py.
+templates.env.filters["localtime"] = localtime.fmt
 
 security = HTTPBasic()
 
@@ -745,14 +749,19 @@ def _mean_dim_rows(matched, first_key, second_key):
     return rows
 
 
-def build_outcome(batch, day=None):
+def build_outcome(batch, day=None, window=None):
     """'First day' view: how the cohort moved Pre -> Post Survey 1, for every
     student who filled both. Post Survey 1 carries no Job-Search score, so this is
     a Job-Intelligence movement story -- who rose, who fell, and by how much.
 
     day: optional 'YYYY-MM-DD' restricting the analysis to the workshop group
-    that filled its Pre survey on that day. None covers the whole batch."""
-    sd = db.matched_sameday(batch, day=day)
+    that filled its Pre survey on that day. None covers the whole batch.
+
+    window: optional db.TimeWindow restricting which times of day the Pre and
+    the Post had to be filled at."""
+    window = window or db.time_window()
+    sd = db.matched_sameday(batch, day=day, window=window)
+    n_unfiltered = len(db.matched_sameday(batch, day=day, window=db.time_window()))
     rows = []
     field_students = []
     quad_counts_pre = {q: 0 for q in QUADRANTS}
@@ -788,6 +797,13 @@ def build_outcome(batch, day=None):
         "has_data": bool(sd),
         "n": len(sd),
         "day": day,
+        # What the time filter is doing, so a page can say so out loud rather
+        # than quietly showing a smaller cohort than the headcounts suggest.
+        "window_active": window.active,
+        "window_pre_label": window.pre_label,
+        "window_post_label": window.post_label,
+        "n_excluded": n_unfiltered - len(sd),
+        "n_unfiltered": n_unfiltered,
         "n_pre": db.stage_count(batch, "pre", day=day),
         "n_sameday": db.stage_count(batch, "post_sameday", day=day),
         "quadrants": QUADRANTS,
@@ -926,10 +942,21 @@ def _admin_n_due(batch):
 
 @app.get("/admin/outcome", response_class=HTMLResponse)
 def admin_outcome(request: Request, username: str = Depends(check_admin)):
-    """First-day tab: Pre -> Post Survey 1 movement, full analysis."""
+    """First-day tab: Pre -> Post Survey 1 movement, full analysis.
+
+    Optional query params narrow it to one workshop group (day) and to the
+    times of day the Pre and the Post were filled at (pre_from/pre_to,
+    post_from/post_to, local time). A cohort that sat the workshop in the
+    morning and a few who filled both surveys over lunch are not one group,
+    so averaging them together hides the result.
+    """
     batch = batch_from(request)
+    day = (request.query_params.get("day") or "").strip() or None
+    window = db.window_from(request.query_params)
     return templates.TemplateResponse(request, "admin_outcome.html", base_ctx(
-        request, batch, o=build_outcome(batch), n_due=_admin_n_due(batch),
+        request, batch, o=build_outcome(batch, day=day, window=window),
+        day=day, groups=db.pre_groups(batch), window=window.as_dict(),
+        tz=settings.TIMEZONE, n_due=_admin_n_due(batch),
     ))
 
 
@@ -1080,7 +1107,7 @@ def admin_groups(request: Request, username: str = Depends(check_admin)):
 
     by_day = defaultdict(list)
     for d in docs:
-        by_day[d["submitted_at"].strftime("%Y-%m-%d")].append(d)
+        by_day[db.day_of(d)].append(d)
 
     groups = []
     for day in sorted(by_day.keys(), reverse=True):
@@ -1097,12 +1124,12 @@ def admin_groups(request: Request, username: str = Depends(check_admin)):
                 "stage": STAGE_LABEL.get(d["stage"], d["stage"]),
                 "stage_key": d["stage"],
                 "time": fmt_duration(fs),
-                "at": d["submitted_at"].strftime("%H:%M"),
+                "at": localtime.fmt(d["submitted_at"], "%H:%M"),
             })
         people.sort(key=lambda p: (p["name"].lower(), p["at"]))
         groups.append({
             "date": day,
-            "date_label": gdocs[0]["submitted_at"].strftime("%d %b %Y"),
+            "date_label": localtime.fmt(gdocs[0]["submitted_at"], "%d %b %Y"),
             "n_students": len({d["email_norm"] for d in gdocs}),
             "counts": counts,
             "total": len(gdocs),
@@ -1184,7 +1211,7 @@ def admin_data(request: Request, username: str = Depends(check_admin)):
         rows.append({
             "name": d.get("name", ""), "email": d.get("email", ""),
             "stage": d["stage"], "stage_label": STAGE_LABEL.get(d["stage"], d["stage"]),
-            "at": d["submitted_at"].strftime("%d %b %Y, %H:%M"),
+            "at": localtime.fmt(d["submitted_at"]),
             "time": fmt_duration(fill_seconds(d)),
             "ji": (sc.get("job_intelligence") or {}).get("total"),
             "js": (sc.get("job_search") or {}).get("total"),
@@ -1221,9 +1248,8 @@ def admin_data_response(request: Request, username: str = Depends(check_admin)):
         stage_label=STAGE_LABEL[stage],
         answers=questions.answers_for(doc),
         extras=questions.extra_fields(doc),
-        submitted_at=doc["submitted_at"].strftime("%d %b %Y, %H:%M"),
-        first_submitted_at=(doc.get("first_submitted_at").strftime("%d %b %Y, %H:%M")
-                            if doc.get("first_submitted_at") else None),
+        submitted_at=localtime.fmt(doc["submitted_at"]),
+        first_submitted_at=localtime.fmt(doc.get("first_submitted_at")) or None,
         resubmissions=max(0, (doc.get("submission_count") or 1) - 1),
         fill_time=fmt_duration(fill_seconds(doc)),
         other_stages=[(st, STAGE_LABEL[st]) for st in ("pre", "post_sameday", "post_week4")
@@ -1264,7 +1290,7 @@ def admin_answers_csv(request: Request, username: str = Depends(check_admin)):
             answers = {a["num"]: a for a in questions.answers_for(d)}
             writer.writerow([
                 d.get("name", ""), d.get("email", ""),
-                d["submitted_at"].strftime("%Y-%m-%d %H:%M:%S"),
+                localtime.fmt(d["submitted_at"], "%Y-%m-%d %H:%M:%S"),
                 fill_seconds(d) if fill_seconds(d) is not None else "",
                 d.get("submission_count") or 1,
             ] + [(answers.get(q["num"], {}).get("answer") or "") for q in qs])
@@ -1306,7 +1332,7 @@ def admin_duplicates(request: Request, username: str = Depends(check_admin)):
                 "stages": [STAGE_LABEL[st] for st in ("pre", "post_sameday", "post_week4")
                            if st in e["stages"]],
                 "n_stages": len(e["stages"]),
-                "last_at": e["last_at"].strftime("%d %b %Y, %H:%M"),
+                "last_at": localtime.fmt(e["last_at"]),
                 "keep": i == 0,                      # newest first, so [0] is the survivor
             })
         view.append({
@@ -1372,7 +1398,8 @@ def _share_view(share):
     the admin ticked 'show student names'. Rows arrive sorted biggest gain
     first, so the numbering reads as a leaderboard. Both the page and the
     spreadsheet are built from this, so they can never disagree."""
-    o = build_outcome(share["batch"], day=share.get("day"))
+    o = build_outcome(share["batch"], day=share.get("day"),
+                      window=db.window_from(share))
     show_names = share.get("show_names", True)
     people = [
         {
@@ -1385,17 +1412,30 @@ def _share_view(share):
     return o, people
 
 
+def _share_window_label(share):
+    """'Pre 09:00-10:00, Post 16:00-17:00', or '' when the link has no time
+    filter -- which is every link created before the filter existed."""
+    w = db.window_from(share)
+    parts = []
+    if w.pre_label:
+        parts.append(f"Pre {w.pre_label}")
+    if w.post_label:
+        parts.append(f"Post {w.post_label}")
+    return ", ".join(parts)
+
+
 def _decorate_share(s):
     return {
         "token": s["token"],
         "title": s["title"],
+        "window_label": _share_window_label(s),
         "note": s.get("note", ""),
         "day": s.get("day"),
         "group_label": _group_label(s.get("day")),
         "show_names": s.get("show_names", True),
         "views": s.get("views", 0),
         "url": _share_url(s["token"]),
-        "created": s["created_at"].strftime("%d %b %Y, %H:%M"),
+        "created": localtime.fmt(s["created_at"]),
     }
 
 
@@ -1405,6 +1445,8 @@ def admin_share(request: Request, username: str = Depends(check_admin)):
     batch = batch_from(request)
     return templates.TemplateResponse(request, "admin_share.html", base_ctx(
         request, batch,
+        window=db.window_from(request.query_params).as_dict(),
+        tz=settings.TIMEZONE,
         groups=db.pre_groups(batch),
         shares=[_decorate_share(s) for s in db.list_shares(batch)],
         new=request.query_params.get("new"),
@@ -1422,7 +1464,8 @@ async def admin_share_create(request: Request, username: str = Depends(check_adm
     token = secrets.token_urlsafe(9)
     db.create_share(token, batch, day, title,
                     note=form.get("note", ""),
-                    show_names=form.get("show_names") == "on")
+                    show_names=form.get("show_names") == "on",
+                    window=db.window_from(form))
     return RedirectResponse(f"/admin/share?batch={batch}&new={token}", status_code=303)
 
 
@@ -1453,6 +1496,7 @@ def shared_analysis(request: Request, token: str):
         request, share["batch"], o=o, people=people, token=token,
         share_title=share["title"], share_note=share.get("note", ""),
         group_label=_group_label(share.get("day")),
+        window_label=_share_window_label(share),
     ))
 
 
@@ -1467,7 +1511,8 @@ def shared_analysis_xlsx(token: str):
 
     o, people = _share_view(share)
     data = exports.shared_analysis_xlsx(
-        share["title"], _group_label(share.get("day")), o, people)
+        share["title"], _group_label(share.get("day")), o, people,
+        window_label=_share_window_label(share))
     filename = exports.safe_filename(share["title"])
     return Response(
         content=data,

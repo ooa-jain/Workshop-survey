@@ -61,7 +61,7 @@
             <td class="num">{{ r.ji }}</td>
             <td class="num">{% if r.js is not none %}{{ r.js }}{% else %}—{% endif %}</td>
             <td class="num">{{ r.quadrant or '—' }}</td>
-            <td class="num">{{ r.date.strftime('%d %b %Y') }}</td>
+            <td class="num">{{ r.date|localtime('%d %b %Y') }}</td>
           </tr>
           {% endfor %}
         </tbody>

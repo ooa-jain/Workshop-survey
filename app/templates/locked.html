@@ -11,7 +11,7 @@
 <div class="card">
   <div class="tab"><span class="tab-n">!</span>{{ st.headline }}</div>
   {% if st.unlock_at %}
-  <p class="note">Opens <b>{{ st.unlock_at.strftime('%d %B %Y') }}</b>. You don't need to do anything before then &mdash; the reminder email will carry a direct link.</p>
+  <p class="note">Opens <b>{{ st.unlock_at|localtime('%d %B %Y') }}</b>. You don't need to do anything before then &mdash; the reminder email will carry a direct link.</p>
   {% endif %}
   <div style="margin-top:18px;display:flex;gap:12px;flex-wrap:wrap">
     <a class="btn" href="/status?batch={{ batch }}{% if email %}&amp;email={{ email }}{% endif %}">See where I am &rarr;</a>

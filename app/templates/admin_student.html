@@ -55,19 +55,19 @@
       <!-- Timeline stage badges -->
       <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
         {% if student.pre %}
-          <span class="badge" style="background:#8b5cf6; color:#fff;">Pre Submitted: {{ student.pre.submitted_at.strftime('%d %b %Y, %H:%M') }} &middot; took {{ student.pre_time }}</span>
+          <span class="badge" style="background:#8b5cf6; color:#fff;">Pre Submitted: {{ student.pre.submitted_at|localtime }} &middot; took {{ student.pre_time }}</span>
         {% else %}
           <span class="badge" style="background:#ef4444; color:#fff;">Pre Pending</span>
         {% endif %}
 
         {% if student.sameday %}
-          <span class="badge" style="background:#f97316; color:#fff;">Same-Day Submitted: {{ student.sameday.submitted_at.strftime('%d %b %Y, %H:%M') }} &middot; took {{ student.sameday_time }}</span>
+          <span class="badge" style="background:#f97316; color:#fff;">Same-Day Submitted: {{ student.sameday.submitted_at|localtime }} &middot; took {{ student.sameday_time }}</span>
         {% else %}
           <span class="badge" style="background:var(--muted); color:#fff;">Same-Day Missing</span>
         {% endif %}
 
         {% if student.week4 %}
-          <span class="badge" style="background:#06b6d4; color:#fff;">Post Survey 2 Submitted: {{ student.week4.submitted_at.strftime('%d %b %Y, %H:%M') }} &middot; took {{ student.week4_time }}</span>
+          <span class="badge" style="background:#06b6d4; color:#fff;">Post Survey 2 Submitted: {{ student.week4.submitted_at|localtime }} &middot; took {{ student.week4_time }}</span>
         {% else %}
           <span class="badge" style="background:var(--muted); color:#fff;">Post Survey 2 Pending</span>
         {% endif %}

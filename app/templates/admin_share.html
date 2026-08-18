@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% from "_macros.html" import admin_tabs with context %}
+{% from "_macros.html" import admin_tabs, time_window_fields with context %}
 {% block title %}Share analysis &middot; {{ app_name }}{% endblock %}
 {% block accent %}aqua{% endblock %}
 {% block wrapclass %} wide{% endblock %}
@@ -58,6 +58,11 @@
     </div>
 
     <div class="q">
+      <label style="display:block; margin-bottom:8px">Only count students who filled at these times <span style="font-weight:400;color:var(--muted)">(optional)</span></label>
+      {{ time_window_fields(window, tz) }}
+    </div>
+
+    <div class="q">
       <label class="opt" style="display:inline-flex">
         <input type="checkbox" name="show_names" checked> Show student names in the individual table
       </label>
@@ -77,13 +82,14 @@
   <div class="tbl-scroll">
     <table class="tbl">
       <thead>
-        <tr><th>Title</th><th>Group</th><th>Link</th><th class="num">Views</th><th class="num">Created</th><th class="num"></th></tr>
+        <tr><th>Title</th><th>Group</th><th>Times</th><th>Link</th><th class="num">Views</th><th class="num">Created</th><th class="num"></th></tr>
       </thead>
       <tbody>
         {% for s in shares %}
         <tr>
           <td class="who">{{ s.title }}<span>{{ 'names shown' if s.show_names else 'anonymised' }}</span></td>
           <td>{{ s.group_label }}</td>
+          <td>{% if s.window_label %}{{ s.window_label }}{% else %}<span class="note" style="margin:0">Any time</span>{% endif %}</td>
           <td>
             <div class="share-link">
               <input type="text" class="share-url" value="{{ s.url }}" readonly onclick="this.select()">

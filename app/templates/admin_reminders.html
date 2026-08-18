@@ -62,7 +62,7 @@
         {% for r in due %}
         <tr>
           <td class="who">{{ r.name }}<span>{{ r.email }}</span></td>
-          <td class="num">{{ r.unlock_at.strftime('%d %b') if r.unlock_at else 'Now' }}</td>
+          <td class="num">{{ r.unlock_at|localtime('%d %b') if r.unlock_at else 'Now' }}</td>
           <td class="num">
             {% if r.manual_access %}
               <span class="badge" style="background:#0284c7; color:#fff;">Admin Granted</span>
@@ -73,7 +73,7 @@
             {% endif %}
           </td>
           <td class="num">
-            {% if r.reminder_count %}{{ r.reminder_count }}&times;<br><span style="font-size:11px;color:var(--muted)">{{ r.reminder_last.strftime('%d %b') }}</span>{% else %}&mdash;{% endif %}
+            {% if r.reminder_count %}{{ r.reminder_count }}&times;<br><span style="font-size:11px;color:var(--muted)">{{ r.reminder_last|localtime('%d %b') }}</span>{% else %}&mdash;{% endif %}
           </td>
           <td class="num" style="display:flex; gap:6px; justify-content:flex-end; align-items:center;">
             {% if r.manual_access %}
@@ -111,8 +111,8 @@
         {% for r in waiting %}
         <tr>
           <td class="who">{{ r.name }}<span>{{ r.email }}</span></td>
-          <td class="num">{{ r.pre_at.strftime('%d %b') }}</td>
-          <td class="num">{{ r.unlock_at.strftime('%d %b') }}</td>
+          <td class="num">{{ r.pre_at|localtime('%d %b') }}</td>
+          <td class="num">{{ r.unlock_at|localtime('%d %b') }}</td>
           <td class="num">{{ r.days_left }}</td>
           <td class="num">{{ 'yes' if r.sameday_done else '&mdash;' | safe }}</td>
           <td class="num">
@@ -143,7 +143,7 @@
         {% for r in complete %}
         <tr>
           <td class="who">{{ r.name }}<span>{{ r.email }}</span></td>
-          <td class="num">{{ r.pre_at.strftime('%d %b') }}</td>
+          <td class="num">{{ r.pre_at|localtime('%d %b') }}</td>
           <td class="num">{{ 'yes' if r.sameday_done else '&mdash;' | safe }}</td>
         </tr>
         {% endfor %}

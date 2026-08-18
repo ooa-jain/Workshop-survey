@@ -216,3 +216,33 @@
   {% endif %}
 </div>
 {%- endmacro %}
+
+
+{# The Pre/Post time-of-day filter. Four optional HH:MM fields; blank means
+   no bound. Used on the Outcome tab and when creating a share, so the two
+   always offer exactly the same thing. #}
+{% macro time_window_fields(window, tz) -%}
+<div style="display:flex; gap:22px; flex-wrap:wrap">
+  <div>
+    <div class="lab" style="margin-bottom:6px">Pre filled between</div>
+    <div style="display:flex; gap:8px; align-items:center">
+      <input type="time" name="pre_from" value="{{ window.pre_from }}" style="width:120px">
+      <span class="note" style="margin:0">and</span>
+      <input type="time" name="pre_to" value="{{ window.pre_to }}" style="width:120px">
+    </div>
+  </div>
+  <div>
+    <div class="lab" style="margin-bottom:6px">Post Survey 1 filled between</div>
+    <div style="display:flex; gap:8px; align-items:center">
+      <input type="time" name="post_from" value="{{ window.post_from }}" style="width:120px">
+      <span class="note" style="margin:0">and</span>
+      <input type="time" name="post_to" value="{{ window.post_to }}" style="width:120px">
+    </div>
+  </div>
+</div>
+<div class="q-hint" style="margin-top:8px">
+  Local time ({{ tz }}). Leave blank for no limit. A student is counted only if
+  <em>both</em> their surveys fall inside these windows &mdash; so a morning cohort
+  can be analysed without the handful who filled both over lunch.
+</div>
+{%- endmacro %}

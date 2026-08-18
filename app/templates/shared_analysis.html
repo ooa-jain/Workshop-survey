@@ -4,9 +4,10 @@
 {% block wrapclass %} wide report{% endblock %}
 {% block content %}
 <header class="masthead">
-  <div class="kicker">{{ group_label }} &middot; workshop results</div>
+  <div class="kicker">{{ group_label }}{% if window_label %} &middot; {{ window_label }}{% endif %} &middot; workshop results</div>
   <h1>{{ share_title }}</h1>
   {% if share_note %}<p class="standfirst">{{ share_note }}</p>{% endif %}
+  {% if window_label %}<p class="note">Counts only students who filled {{ window_label }}{% if o.n_excluded %}; {{ o.n_excluded }} who filled outside those times are not included{% endif %}.</p>{% endif %}
   <p class="standfirst">Where this group stood <em>before</em> the workshop, and where it stood at Post Survey 1, by the end of the workshop day. Job Intelligence is scored 0&ndash;100 from the same five scenarios both times, so the two numbers are directly comparable.</p>
   <p class="no-print" style="margin-top:18px">
     <button class="btn btn-sm" type="button" data-print>Download as PDF &darr;</button>
