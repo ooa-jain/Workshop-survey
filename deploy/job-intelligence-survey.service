@@ -8,11 +8,23 @@ User=www-data
 Group=www-data
 WorkingDirectory=/var/www/job-intelligence-survey
 EnvironmentFile=/var/www/job-intelligence-survey/.env
+# --workers: rule of thumb is (2 x CPU cores) + 1. Run `nproc` on the VPS and
+#   set it accordingly -- a 500-student cohort all submitting inside the same
+#   ten minutes is the load this has to absorb.
+# --timeout: a worker is killed if a single request takes this long. Mail and
+#   chart rendering no longer happen inside the request (see the "When a
+#   submit goes wrong" section of the README), so nothing normal comes close;
+#   the headroom is for slow Atlas queries on the admin analysis pages.
+# --backlog: how many connections the kernel queues before refusing them.
+#   The default 2048 is already well above one cohort, left explicit as a
+#   reminder that it is the knob for "connection refused" under a rush.
 ExecStart=/var/www/job-intelligence-survey/venv/bin/gunicorn app.main:app \
-    --workers 3 \
+    --workers 5 \
     --worker-class uvicorn.workers.UvicornWorker \
     --bind 127.0.0.1:8100 \
-    --timeout 60 \
+    --timeout 120 \
+    --graceful-timeout 30 \
+    --backlog 2048 \
     --access-logfile /var/log/job-intelligence-survey/access.log \
     --error-logfile /var/log/job-intelligence-survey/error.log
 Restart=always

@@ -8,8 +8,9 @@ rendered server-side as PNG and attached inline via Content-ID.
 import io
 import matplotlib
 matplotlib.use("Agg")
-import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
+from matplotlib.backends.backend_agg import FigureCanvasAgg
+from matplotlib.figure import Figure
 
 INK = "#17131F"
 TEAL = "#5B3DF5"
@@ -18,10 +19,19 @@ MUTED = "#6B6377"
 WARN = "#C3312B"
 
 
+def _new_fig(figsize):
+    """A standalone Agg figure. Deliberately not pyplot: result emails are
+    rendered on background threads, and pyplot's global figure registry is
+    not thread-safe -- two students submitting at once would draw into each
+    other's chart."""
+    fig = Figure(figsize=figsize)
+    FigureCanvasAgg(fig)
+    return fig, fig.subplots()
+
+
 def _fig_to_png_bytes(fig, dpi=170):
     buf = io.BytesIO()
     fig.savefig(buf, format="png", dpi=dpi, bbox_inches="tight", facecolor="white")
-    plt.close(fig)
     buf.seek(0)
     return buf.read()
 
@@ -33,7 +43,7 @@ def dimension_arrows_png(rows):
     the on-screen SVG version.
     """
     n = len(rows)
-    fig, ax = plt.subplots(figsize=(7.4, 0.95 * n + 0.6))
+    fig, ax = _new_fig((7.4, 0.95 * n + 0.6))
     ax.set_xlim(0, 3)
     ax.set_ylim(-0.6, n - 0.4)
     ax.axis("off")
@@ -82,7 +92,7 @@ def dimension_arrows_png(rows):
 
 def quadrant_png(series):
     """series: same shape as charts_svg.quadrant_svg's `series` argument."""
-    fig, ax = plt.subplots(figsize=(6.2, 4.6))
+    fig, ax = _new_fig((6.2, 4.6))
     ax.set_xlim(0, 100)
     ax.set_ylim(0, 100)
     ax.axvline(50, color="#D8CEBC", lw=1)

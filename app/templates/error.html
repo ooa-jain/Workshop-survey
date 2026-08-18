@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% block title %}{{ headline }} &middot; {{ app_name }}{% endblock %}
+{% block accent %}coral{% endblock %}
+{% block content %}
+<header class="masthead">
+  <div class="kicker">{{ kicker }}</div>
+  <h1>{{ headline|safe }}</h1>
+  <p class="standfirst">{{ detail }}</p>
+</header>
+
+<div class="card">
+  <div class="tab"><span class="tab-n">!</span>What to do</div>
+  <p class="note">{{ advice }}</p>
+  <div style="margin-top:18px;display:flex;gap:12px;flex-wrap:wrap">
+    <a class="btn" href="javascript:history.back()">&larr; Back to the form</a>
+    <a class="btn btn-ghost" href="/?batch={{ batch }}">All three surveys</a>
+  </div>
+</div>
+{% endblock %}

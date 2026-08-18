@@ -22,6 +22,13 @@ class Settings:
     SMTP_USER = os.environ.get("SMTP_USER", "")
     SMTP_PASSWORD = os.environ.get("SMTP_PASSWORD", "")
     SMTP_USE_TLS = _bool(os.environ.get("SMTP_USE_TLS"), default=True)
+    # Seconds to wait on the SMTP server before giving up. Without this a
+    # hung mail server holds a socket open indefinitely.
+    SMTP_TIMEOUT = int(os.environ.get("SMTP_TIMEOUT", "20"))
+    # Threads that build and send mail in the background, per worker process.
+    # Deliberately small: chart rendering is CPU work, and mail must never
+    # compete with students still submitting. See app/email_utils.py.
+    EMAIL_WORKERS = int(os.environ.get("EMAIL_WORKERS", "4"))
     EMAIL_FROM = os.environ.get("EMAIL_FROM", "Job Intelligence Workshop <noreply@juooa.cloud>")
     EMAIL_ENABLED = _bool(os.environ.get("EMAIL_ENABLED"), default=True)
 
