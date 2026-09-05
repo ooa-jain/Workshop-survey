@@ -1099,6 +1099,28 @@ async def admin_student_delete(request: Request, username: str = Depends(check_a
 STAGE_LABEL = {"pre": "Pre", "post_sameday": "Same-day", "post_week4": "Week 4"}
 
 
+def _group_recipients_by_day(batch):
+    """Map YYYY-MM-DD (of a student's Pre submission) -> the students in that
+    group who filled BOTH Pre and Same-day, each with their signed Week-4
+    link. This is who the per-group 'Send Week-4 mail' action writes to: it
+    is keyed on the Pre date, so every student lands in exactly one group,
+    the day they started. No due/gate filtering -- the admin decides when to
+    send, and it goes to all Pre+Same-day fillers regardless of Week-4 state."""
+    from collections import defaultdict
+    pre = db.all_responses(batch, "pre")
+    sameday_emails = {d["email_norm"] for d in db.all_responses(batch, "post_sameday")}
+    by_day = defaultdict(list)
+    for pre_doc in pre:
+        if pre_doc["email_norm"] in sameday_emails:
+            day = pre_doc["submitted_at"].strftime("%Y-%m-%d")
+            by_day[day].append({
+                "name": pre_doc["name"],
+                "email": pre_doc["email"],
+                "link": eligibility.week4_link(pre_doc["email"], batch),
+            })
+    return by_day
+
+
 @app.get("/admin/groups", response_class=HTMLResponse)
 def admin_groups(request: Request, username: str = Depends(check_admin)):
     """Every submission grouped by the calendar day it was filled, with
@@ -1107,6 +1129,7 @@ def admin_groups(request: Request, username: str = Depends(check_admin)):
     from collections import defaultdict
     batch = batch_from(request)
     docs = db.all_responses(batch)
+    recipients_by_day = _group_recipients_by_day(batch)
 
     by_day = defaultdict(list)
     for d in docs:
@@ -1137,6 +1160,7 @@ def admin_groups(request: Request, username: str = Depends(check_admin)):
             "total": len(gdocs),
             "avg_time": fmt_duration(sum(times) / len(times)) if times else "—",
             "people": people,
+            "n_recipients": len(recipients_by_day.get(day, [])),
         })
 
     all_times = [t for t in (fill_seconds(d) for d in docs) if t is not None]
@@ -1155,7 +1179,10 @@ def admin_groups(request: Request, username: str = Depends(check_admin)):
 
     return templates.TemplateResponse(request, "admin_groups.html", base_ctx(
         request, batch, groups=groups, overall=overall, n_due=n_due,
+        email_live=settings.EMAIL_ENABLED and bool(settings.SMTP_HOST),
         deleted=request.query_params.get("deleted"),
+        sent=request.query_params.get("sent"),
+        failed=request.query_params.get("failed"),
     ))
 
 
@@ -1166,6 +1193,46 @@ async def admin_groups_delete(request: Request, username: str = Depends(check_ad
     date = require(form, "date", "Date")
     deleted = db.delete_responses_on_date(batch, date)
     return RedirectResponse(f"/admin/groups?batch={batch}&deleted={deleted}", status_code=303)
+
+
+@app.post("/admin/groups/send")
+async def admin_groups_send(request: Request, username: str = Depends(check_admin)):
+    """Mail the Week-4 survey link to one group -- every student whose Pre
+    landed on that day and who also filled Same-day, regardless of whether
+    their Week-4 is unlocked or already done. This is the admin's 'a month
+    on, nudge this workshop group' action; the same signed link and email
+    body as the per-student reminder are reused."""
+    form = await request.form()
+    batch = form.get("batch", settings.WORKSHOP_BATCH)
+    date = require(form, "date", "Date")
+
+    recipients = _group_recipients_by_day(batch).get(date, [])
+
+    sent = failed = 0
+    for row in recipients:
+        html = templates.get_template("email_week4_reminder.html").render(
+            app_name=settings.APP_NAME, name=row["name"], link=row["link"],
+            status_url=eligibility.status_link(row["email"], batch),
+            open_days=settings.WEEK4_OPEN_DAYS,
+        )
+        try:
+            ok = email_utils.send_result_email(
+                row["email"], row["name"],
+                f"{settings.APP_NAME} — your 4-week check-in is open", html, None,
+            )
+        except Exception as exc:                     # SMTP down, bad address, etc.
+            print(f"[groups send] failed for {row['email']}: {exc}")
+            ok = False
+        if ok:
+            db.log_week4_reminder(row["email"], batch)
+            sent += 1
+        else:
+            failed += 1
+
+    return RedirectResponse(
+        f"/admin/groups?batch={batch}&sent={sent}&failed={failed}",
+        status_code=303,
+    )
 
 
 # ---------------------------------------------------------------------------

@@ -7,7 +7,7 @@
 <header class="masthead">
   <div class="kicker">Admin &middot; {{ batch }}</div>
   <h1>Groups <em>by date</em></h1>
-  <p class="standfirst">Everyone who filled a survey is grouped by the day they submitted it. Each group shows how many did Pre, Same-day and Week&nbsp;4, how long they took, and can be deleted as a whole.</p>
+  <p class="standfirst">Everyone who filled a survey is grouped by the day they submitted it. Each group shows how many did Pre, Same-day and Week&nbsp;4, how long they took, can be mailed the Week-4 link as a whole, and can be deleted as a whole.</p>
 </header>
 
 {{ admin_tabs('groups', batch, n_due) }}
@@ -15,6 +15,16 @@
 {% if deleted is not none and deleted != '' %}
   {% if deleted|int > 0 %}<div class="ok-banner">Deleted {{ deleted }} response{{ '' if deleted|int == 1 else 's' }} from that group.</div>
   {% else %}<div class="error-banner">Nothing was deleted &mdash; that group was already empty.</div>{% endif %}
+{% endif %}
+
+{% if sent is not none and sent != '' %}
+  {% if sent|int > 0 %}<div class="ok-banner">Sent the Week-4 mail to {{ sent }} student{{ '' if sent|int == 1 else 's' }}{% if failed and failed|int > 0 %}; {{ failed }} failed{% endif %}.</div>
+  {% elif failed and failed|int > 0 %}<div class="error-banner">Could not send &mdash; all {{ failed }} attempt{{ '' if failed|int == 1 else 's' }} failed. Check the mail settings.</div>
+  {% else %}<div class="error-banner">Nobody to mail in that group &mdash; no student there filled both Pre and Same-day.</div>{% endif %}
+{% endif %}
+
+{% if not email_live %}
+<div class="error-banner">Email is not configured (no live SMTP), so the &ldquo;Send Week-4 mail&rdquo; buttons will log the mail instead of delivering it.</div>
 {% endif %}
 
 <!-- Overall totals -->
@@ -44,12 +54,22 @@
         avg {{ g.avg_time }}
       </p>
     </div>
-    <form method="post" action="/admin/groups/delete" style="margin:0"
-          onsubmit="return confirm('Delete ALL {{ g.total }} submission(s) from {{ g.date_label }}? This cannot be undone.');">
-      <input type="hidden" name="batch" value="{{ batch }}">
-      <input type="hidden" name="date" value="{{ g.date }}">
-      <button class="btn btn-ghost btn-sm" type="submit" style="border-color:var(--warn); color:var(--warn)">Delete group</button>
-    </form>
+    <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
+      <form method="post" action="/admin/groups/send" style="margin:0"
+            onsubmit="return confirm('Email the Week-4 survey link to the {{ g.n_recipients }} student(s) in {{ g.date_label }} who filled Pre and Same-day?');">
+        <input type="hidden" name="batch" value="{{ batch }}">
+        <input type="hidden" name="date" value="{{ g.date }}">
+        <button class="btn btn-ghost btn-sm" type="submit"{% if g.n_recipients == 0 %} disabled title="No student in this group filled both Pre and Same-day"{% endif %}>
+          Send Week-4 mail{% if g.n_recipients %} ({{ g.n_recipients }}){% endif %}
+        </button>
+      </form>
+      <form method="post" action="/admin/groups/delete" style="margin:0"
+            onsubmit="return confirm('Delete ALL {{ g.total }} submission(s) from {{ g.date_label }}? This cannot be undone.');">
+        <input type="hidden" name="batch" value="{{ batch }}">
+        <input type="hidden" name="date" value="{{ g.date }}">
+        <button class="btn btn-ghost btn-sm" type="submit" style="border-color:var(--warn); color:var(--warn)">Delete group</button>
+      </form>
+    </div>
   </div>
 
   <div class="tbl-scroll" style="margin-top:16px">
